@@ -386,7 +386,7 @@ export const defaultNotificationSettings: NotificationToggleSettings = {
   emailEnabled: false,
   quietHoursEnabled: true,
   quietHoursStart: '23:00',
-  quietHoursEnd: '7:00',
+  quietHoursEnd: '07:00',
   deadlineReminderHoursBefore: 3,
   announcementReminderHoursBefore: 6,
   purchaseReminderHoursBefore: 6,

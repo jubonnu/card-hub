@@ -9,6 +9,7 @@ const user: AuthUser = {
   email: 'taro@example.com',
   accountStatus: 'active',
   scheduledDeletionAt: null,
+  cachedAppleDisplayName: null,
 };
 
 function resetStore() {

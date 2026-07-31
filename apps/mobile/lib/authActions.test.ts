@@ -219,7 +219,7 @@ describe('authActions', () => {
 
     it('オフライン時はsignedInのままofflineCachedになり、キャッシュ済みuserを維持する', async () => {
       await saveRefreshToken('rt-1', 'device-1');
-      useAuthStore.setState({ user: { publicUserId: 'cached', displayName: null, email: null, accountStatus: 'active', scheduledDeletionAt: null } });
+      useAuthStore.setState({ user: { publicUserId: 'cached', displayName: null, email: null, accountStatus: 'active', scheduledDeletionAt: null, cachedAppleDisplayName: null } });
       global.fetch = vi.fn().mockRejectedValue(new TypeError('Network request failed'));
 
       await restoreSession();
@@ -308,12 +308,82 @@ describe('authActions', () => {
     });
   });
 
+  describe('signInWithApple: 表示名のキャッシュ（Appleは初回のみfullNameを返す仕様への対応）', () => {
+    beforeEach(async () => {
+      await AsyncStorage.setItem('cardhub.bootstrapped.u1', 'true');
+    });
+
+    it('初回ログインでfullNameが取得できればcachedAppleDisplayNameへ保存する', async () => {
+      vi.mocked(AppleAuthentication.signInAsync).mockResolvedValue({
+        identityToken: 'idt',
+        authorizationCode: 'code',
+        user: 'apple-user',
+        fullName: { namePrefix: null, givenName: '太郎', middleName: null, familyName: '山田', nameSuffix: null, nickname: null },
+        email: null,
+        realUserStatus: 0,
+        state: null,
+      });
+      global.fetch = vi
+        .fn()
+        .mockResolvedValueOnce(
+          jsonResponse(200, {
+            accessToken: 'at',
+            refreshToken: 'rt',
+            expiresIn: 900,
+            user: { publicUserId: 'u1', displayName: null, email: null, accountStatus: 'active', createdAt: '2026-01-01' },
+          })
+        )
+        .mockResolvedValueOnce(jsonResponse(200, meBody));
+
+      await signInWithApple();
+
+      expect(useAuthStore.getState().user?.cachedAppleDisplayName).toBe('山田太郎');
+    });
+
+    it('2回目以降はfullNameがnullでも前回キャッシュした表示名を保持する', async () => {
+      useAuthStore.setState({
+        user: {
+          publicUserId: 'u1',
+          displayName: null,
+          email: null,
+          accountStatus: 'active',
+          scheduledDeletionAt: null,
+          cachedAppleDisplayName: '山田太郎',
+        },
+      });
+      vi.mocked(AppleAuthentication.signInAsync).mockResolvedValue({
+        identityToken: 'idt',
+        authorizationCode: 'code',
+        user: 'apple-user',
+        fullName: null, // Appleは2回目以降fullNameを返さない
+        email: null,
+        realUserStatus: 0,
+        state: null,
+      });
+      global.fetch = vi
+        .fn()
+        .mockResolvedValueOnce(
+          jsonResponse(200, {
+            accessToken: 'at',
+            refreshToken: 'rt',
+            expiresIn: 900,
+            user: { publicUserId: 'u1', displayName: null, email: null, accountStatus: 'active', createdAt: '2026-01-01' },
+          })
+        )
+        .mockResolvedValueOnce(jsonResponse(200, meBody));
+
+      await signInWithApple();
+
+      expect(useAuthStore.getState().user?.cachedAppleDisplayName).toBe('山田太郎');
+    });
+  });
+
   describe('signOut', () => {
     beforeEach(() => {
       useAuthStore.setState({
         status: 'signedIn',
         sessionAvailability: 'online',
-        user: { publicUserId: 'u1', displayName: null, email: null, accountStatus: 'active', scheduledDeletionAt: null },
+        user: { publicUserId: 'u1', displayName: null, email: null, accountStatus: 'active', scheduledDeletionAt: null, cachedAppleDisplayName: null },
         accessToken: 'at-valid',
         accessTokenExpiresAt: Date.now() + 10 * 60_000,
       });
@@ -389,7 +459,7 @@ describe('authActions', () => {
       useAuthStore.setState({
         status: 'signedIn',
         sessionAvailability: 'online',
-        user: { publicUserId: 'u1', displayName: null, email: null, accountStatus: 'active', scheduledDeletionAt: null },
+        user: { publicUserId: 'u1', displayName: null, email: null, accountStatus: 'active', scheduledDeletionAt: null, cachedAppleDisplayName: null },
         accessToken: 'at-valid',
         accessTokenExpiresAt: Date.now() + 10 * 60_000,
       });
@@ -420,7 +490,7 @@ describe('authActions', () => {
       useAuthStore.setState({
         status: 'signedIn',
         sessionAvailability: 'online',
-        user: { publicUserId: 'u1', displayName: null, email: null, accountStatus: 'active', scheduledDeletionAt: null },
+        user: { publicUserId: 'u1', displayName: null, email: null, accountStatus: 'active', scheduledDeletionAt: null, cachedAppleDisplayName: null },
         accessToken: 'at-valid',
         accessTokenExpiresAt: Date.now() + 10 * 60_000,
       });

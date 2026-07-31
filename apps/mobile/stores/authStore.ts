@@ -23,6 +23,12 @@ export interface AuthUser {
   email: string | null;
   accountStatus: 'active' | 'pending_deletion' | 'deleted';
   scheduledDeletionAt: string | null;
+  /**
+   * Apple Sign-Inは初回認可時のみfullNameを返す仕様のため、初回に取得できた表示名を
+   * ローカルにキャッシュしておく（`lib/displayName.ts`の表示名解決で使う）。
+   * サーバーが同名を保存していないため、サインアウト・再インストールで失われる制約が残る。
+   */
+  cachedAppleDisplayName: string | null;
 }
 
 interface AuthState {

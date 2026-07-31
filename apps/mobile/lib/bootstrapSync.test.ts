@@ -67,7 +67,7 @@ function signInAsGuestThenUser(publicUserId: string) {
   useAuthStore.setState({
     status: 'signedIn',
     sessionAvailability: 'online',
-    user: { publicUserId, displayName: null, email: null, accountStatus: 'active', scheduledDeletionAt: null },
+    user: { publicUserId, displayName: null, email: null, accountStatus: 'active', scheduledDeletionAt: null, cachedAppleDisplayName: null },
     accessToken: 'at-valid',
     accessTokenExpiresAt: Date.now() + 10 * 60_000,
   });
@@ -126,6 +126,35 @@ describe('bootstrapSync', () => {
   afterEach(() => {
     global.fetch = originalFetch;
     vi.restoreAllMocks();
+  });
+
+  it('空guestデータでもbootstrapが成功し、notificationPreferencesの時刻はゼロ埋めHH:MM形式で送信される', async () => {
+    signInAsGuestThenUser('userA');
+    useMyLotteriesStore.setState({ saved: [] });
+    useFavoritesStore.setState({ favoriteLotteryIds: [], followedProductKeys: [], followedProductIds: [] });
+    useChecklistStore.setState({ groups: {} });
+
+    let capturedBody: Record<string, unknown> | undefined;
+    global.fetch = vi.fn().mockImplementation(async (_url: string, init: RequestInit) => {
+      capturedBody = JSON.parse(init.body as string);
+      return jsonResponse(
+        200,
+        successBody({ favorites: { accepted: 0, skipped: 0, conflicts: [] }, notificationPreferences: { accepted: true, skipped: false } })
+      );
+    });
+
+    await ensureNamespaceAndBootstrap();
+
+    expect(capturedBody?.userLotteries).toEqual([]);
+    expect(capturedBody?.favorites).toEqual([]);
+    expect(capturedBody?.checklistSteps).toEqual([]);
+    expect(capturedBody?.legacyFollowedProductKeys).toEqual([]);
+    // 「7:00」のような非ゼロ埋め時刻はバックエンドのQUIET_HOURS_TIME_REGEXで422になるため、
+    // ここでリグレッションを防ぐ（実際にx-post-fetcherの実スキーマで422になることを確認済みのバグ）。
+    const notificationPreferences = capturedBody?.notificationPreferences as { quietHoursStart: string; quietHoursEnd: string };
+    expect(notificationPreferences.quietHoursStart).toMatch(/^([01]\d|2[0-3]):[0-5]\d$/);
+    expect(notificationPreferences.quietHoursEnd).toMatch(/^([01]\d|2[0-3]):[0-5]\d$/);
+    expect(await AsyncStorage.getItem('cardhub.bootstrapped.userA')).toBe('true');
   });
 
   it('成功時: namespaceがuserへ切り替わり、serverStateが反映され、bootstrapped flagが立つ', async () => {

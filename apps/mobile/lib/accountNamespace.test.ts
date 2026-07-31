@@ -33,7 +33,7 @@ registerAccountScopedStore({
 function setAuthUser(publicUserId: string | null) {
   useAuthStore.setState({
     user: publicUserId
-      ? { publicUserId, displayName: null, email: null, accountStatus: 'active', scheduledDeletionAt: null }
+      ? { publicUserId, displayName: null, email: null, accountStatus: 'active', scheduledDeletionAt: null, cachedAppleDisplayName: null }
       : null,
   });
 }
