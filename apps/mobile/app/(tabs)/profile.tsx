@@ -16,6 +16,7 @@ import { ScreenContainer } from '@/components/ScreenContainer';
 import { SyncConflictBanner } from '@/components/auth/SyncConflictBanner';
 import { monthlyStats } from '@/data/mockData';
 import { deleteAccount, signOut, signOutAllDevices } from '@/lib/authActions';
+import { resolveDisplayName } from '@/lib/displayName';
 import { useFavoritesStore } from '@/stores/favoritesStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/theme/useTheme';
@@ -118,7 +119,7 @@ export default function ProfileScreen() {
               <PersonIcon size={30} color={theme.colors.textFaint} strokeWidth={1.8} />
             </View>
             <View style={styles.profileText}>
-              <Text style={[styles.userName, { color: theme.colors.textPrimary }]}>{user!.displayName ?? 'ユーザー'}</Text>
+              <Text style={[styles.userName, { color: theme.colors.textPrimary }]}>{resolveDisplayName(user!)}</Text>
               <Text style={[styles.userId, { color: theme.colors.textTertiary }]}>{user!.email ?? user!.publicUserId}</Text>
               {user!.accountStatus === 'pending_deletion' && (
                 <Text style={[styles.userId, { color: theme.colors.danger }]}>
@@ -191,6 +192,11 @@ export default function ProfileScreen() {
             icon={<BackupIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
             label="データのバックアップ"
             onPress={() => Alert.alert('準備中です', 'データのバックアップ機能は今後実装予定です')}
+          />
+          <MenuRow
+            icon={<HeartIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
+            label="プレミアムプラン"
+            onPress={() => router.push('/paywall')}
             last={!isSignedIn}
           />
           {isSignedIn && (

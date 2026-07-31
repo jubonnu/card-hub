@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   extractUserLotteryVersionConflict,
+  fetchEntitlements,
   fetchUserLotteries,
+  postEntitlementsRefresh,
   postSyncBootstrap,
   putUserLottery,
   SyncResponseValidationError,
@@ -149,5 +151,31 @@ describe('syncClient', () => {
     expect(result.syncId).toBe('sync-1');
     expect(result.results.legacyFollowedProducts.unresolved).toEqual(['旧キー']);
     expect(result.serverState.userLotteries).toHaveLength(1);
+  });
+
+  it('fetchEntitlementsはサーバー確定状態を検証して返す', async () => {
+    global.fetch = vi.fn().mockResolvedValue(
+      jsonResponse(200, { premiumActive: true, productType: 'monthly', expiresAt: '2026-12-31T00:00:00.000Z', lastVerifiedAt: '2026-08-01T00:00:00.000Z', stale: false })
+    );
+
+    const result = await fetchEntitlements();
+    expect(result.premiumActive).toBe(true);
+    expect(result.productType).toBe('monthly');
+  });
+
+  it('postEntitlementsRefreshは購入直後の即時照合成功時に反映済み状態を返す', async () => {
+    global.fetch = vi.fn().mockResolvedValue(
+      jsonResponse(200, { premiumActive: true, productType: 'lifetime', expiresAt: null, lastVerifiedAt: '2026-08-01T00:00:00.000Z', stale: false })
+    );
+
+    const result = await postEntitlementsRefresh();
+    expect(result.premiumActive).toBe(true);
+    expect(result.expiresAt).toBeNull();
+  });
+
+  it('postEntitlementsRefreshが一時的に失敗した場合はAuthApiErrorとして伝播する（購入失敗とは区別される）', async () => {
+    global.fetch = vi.fn().mockResolvedValue(jsonResponse(503, { error: { code: 'SERVICE_BUSY', message: '混雑', requestId: 'r1' } }));
+
+    await expect(postEntitlementsRefresh()).rejects.toMatchObject({ kind: 'service_busy' });
   });
 });

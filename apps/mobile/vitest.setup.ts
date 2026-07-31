@@ -43,3 +43,30 @@ vi.mock('expo-apple-authentication', () => ({
   AppleAuthenticationButtonType: { SIGN_IN: 0 },
   AppleAuthenticationButtonStyle: { BLACK: 0, WHITE: 1 },
 }));
+
+/**
+ * G4: react-native-purchasesはネイティブモジュールのため、vitest（Node環境）では動作しない。
+ * 各テストは`vi.mocked(Purchases.xxx).mockResolvedValue(...)`等で個別の戻り値を設定できる。
+ */
+vi.mock('react-native-purchases', () => {
+  const mockPurchases = {
+    configure: vi.fn(),
+    logIn: vi.fn(),
+    logOut: vi.fn(),
+    getCustomerInfo: vi.fn(),
+    getOfferings: vi.fn(),
+    purchasePackage: vi.fn(),
+    restorePurchases: vi.fn(),
+    getAppUserID: vi.fn(),
+    isConfigured: vi.fn(async () => false),
+    addCustomerInfoUpdateListener: vi.fn(),
+    removeCustomerInfoUpdateListener: vi.fn(),
+    setLogLevel: vi.fn(),
+    showManageSubscriptions: vi.fn(),
+  };
+  return {
+    default: mockPurchases,
+    LOG_LEVEL: { DEBUG: 'DEBUG', INFO: 'INFO', WARN: 'WARN', ERROR: 'ERROR', VERBOSE: 'VERBOSE' },
+    PURCHASES_ERROR_CODE: { PURCHASE_CANCELLED_ERROR: '1' },
+  };
+});

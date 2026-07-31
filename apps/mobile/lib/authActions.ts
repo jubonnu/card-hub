@@ -3,8 +3,10 @@ import * as Crypto from 'expo-crypto';
 
 import { deleteNamespaceData, syncNamespaceWithAuthUser } from '@/lib/accountNamespace';
 import { appleSignIn, deleteMe, fetchMe, logout, logoutAllDevices } from '@/lib/authApiClient';
+import { ensureRevenueCatLogin, revenueCatLogout } from '@/lib/billingLifecycle';
 import { ensureNamespaceAndBootstrap } from '@/lib/bootstrapSync';
 import { getOrCreateDeviceId } from '@/lib/deviceId';
+import { buildAppleDisplayName } from '@/lib/displayName';
 import { clearRefreshToken, getRefreshToken, getRefreshTokenDeviceId, saveRefreshToken } from '@/lib/secureStore';
 import { useSyncConflictsStore } from '@/lib/syncConflicts';
 import { refreshAccessToken, SessionDiscardedError } from '@/lib/tokenRefresh';
@@ -27,14 +29,17 @@ function isAppleSignInCancelled(e: unknown): boolean {
 
 function toAuthUser(
   user: { publicUserId: string; displayName: string | null; email: string | null; accountStatus: MeResponse['accountStatus'] },
-  scheduledDeletionAt: string | null = null
+  options: { scheduledDeletionAt?: string | null; cachedAppleDisplayName?: string | null } = {}
 ): AuthUser {
   return {
     publicUserId: user.publicUserId,
     displayName: user.displayName,
     email: user.email,
     accountStatus: user.accountStatus,
-    scheduledDeletionAt,
+    scheduledDeletionAt: options.scheduledDeletionAt ?? null,
+    // Appleは初回認可時のみfullNameを返すため、明示的に渡されなければ既存のキャッシュ値を保持する
+    // （`??`はnull/undefinedいずれでも既存値へフォールバックする）。
+    cachedAppleDisplayName: options.cachedAppleDisplayName ?? useAuthStore.getState().user?.cachedAppleDisplayName ?? null,
   };
 }
 
@@ -46,7 +51,7 @@ function toAuthUser(
 async function hydrateFullUser(accessToken: string): Promise<void> {
   try {
     const me = await fetchMe(accessToken);
-    useAuthStore.getState().setUser(toAuthUser(me, me.scheduledDeletionAt));
+    useAuthStore.getState().setUser(toAuthUser(me, { scheduledDeletionAt: me.scheduledDeletionAt }));
   } catch {
     // ベストエフォート
   }
@@ -94,8 +99,11 @@ export async function signInWithApple(): Promise<void> {
     });
 
     await saveRefreshToken(loginResult.refreshToken, deviceId);
+    // Appleのfull nameは初回認可時のみ返る。取得できた場合のみキャッシュへ渡す
+    // （渡さない場合は`toAuthUser`が既存キャッシュを保持する)。
+    const appleDisplayName = buildAppleDisplayName(credential.fullName);
     useAuthStore.getState().setSignedIn({
-      user: toAuthUser(loginResult.user),
+      user: toAuthUser(loginResult.user, { cachedAppleDisplayName: appleDisplayName }),
       accessToken: loginResult.accessToken,
       accessTokenExpiresAt: Date.now() + loginResult.expiresIn * 1000,
     });
@@ -107,6 +115,9 @@ export async function signInWithApple(): Promise<void> {
     } catch {
       // ベストエフォート。詳細はensureNamespaceAndBootstrap内部のリトライ設計（batchClientRequestId保持）に委ねる。
     }
+
+    // RevenueCatユーザー切替（Mobile-G4-1）。内部で例外を握りつぶすため、ここでは待つだけでよい。
+    await ensureRevenueCatLogin(loginResult.user.publicUserId);
 
     await hydrateFullUser(loginResult.accessToken);
   };
@@ -141,6 +152,9 @@ export async function restoreSession(): Promise<void> {
     } catch {
       // ベストエフォート。
     }
+    // アプリ起動時、signedIn後にRevenueCatユーザー切替を確定させる（Mobile-G4-4）。
+    const publicUserId = useAuthStore.getState().user?.publicUserId;
+    if (publicUserId) await ensureRevenueCatLogin(publicUserId);
   } catch (e) {
     if (e instanceof SessionDiscardedError) return;
     // それ以外（network/5xx等）はtokenRefresh側でsessionAvailability='offlineCached'へ
@@ -157,6 +171,7 @@ async function localSignOutCleanup(): Promise<void> {
   useAuthStore.getState().setSignedOut();
   await syncNamespaceWithAuthUser(); // userのnamespaceは削除しない。guestへ切り替えるのみ（24-3章）。
   useSyncConflictsStore.getState().clear();
+  await revenueCatLogout(); // Purchases.logOut() + billingStoreリセット（Mobile-G4-1・G4-4）。
 }
 
 /**

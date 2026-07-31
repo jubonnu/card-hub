@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { AuthApiError } from '@/lib/authApiClient';
 import { authenticatedRequest } from '@/lib/authenticatedApiClient';
+import { entitlementsResponseSchema, type EntitlementsResponse } from '@/schemas/revenueCat';
 import {
   listChecklistStepsResponseSchema,
   listFavoritesResponseSchema,
@@ -217,4 +218,17 @@ export async function putNotificationPreferences(payload: PutNotificationPrefere
 export async function postSyncBootstrap(request: SyncBootstrapRequest): Promise<SyncBootstrapResponse> {
   const body = await authenticatedRequest('/me/sync/bootstrap', { method: 'POST', body: JSON.stringify(request) });
   return parseOrThrow(syncBootstrapResponseSchema, body);
+}
+
+// ---- entitlements（RevenueCat premium、G4-1） ----
+
+export async function fetchEntitlements(): Promise<EntitlementsResponse> {
+  const body = await authenticatedRequest('/me/entitlements');
+  return parseOrThrow(entitlementsResponseSchema, body);
+}
+
+/** リクエスト本文は送らない（サーバーは認証済みユーザー自身のpublicUserIdのみを使う）。 */
+export async function postEntitlementsRefresh(): Promise<EntitlementsResponse> {
+  const body = await authenticatedRequest('/me/entitlements/refresh', { method: 'POST', body: JSON.stringify({}) });
+  return parseOrThrow(entitlementsResponseSchema, body);
 }
