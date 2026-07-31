@@ -1,0 +1,149 @@
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
+
+import { fetchLotteryById } from '@/lib/apiClient';
+import { createAccountScopedStorage, isNamespaceSwitching, isSyncEligible, registerAccountScopedStore } from '@/lib/accountNamespace';
+import { generateClientRequestId } from '@/lib/clientRequestId';
+import { enqueueOperation } from '@/lib/offlineQueue';
+import { registerQueueResultHandler } from '@/lib/offlineQueueResultRouter';
+import type { LotteryRecord } from '@/schemas/lotteryApi';
+import { userLotteryMutationResponseSchema, type UserLotteryRow } from '@/schemas/syncApi';
+
+export interface SavedLottery {
+  record: LotteryRecord;
+  savedAt: string;
+  /** サーバーの`serverVersion`（未同期・ゲスト時は未設定）。差分同期・キュー成功応答で更新される。 */
+  serverVersion?: number;
+}
+
+interface MyLotteriesState {
+  saved: SavedLottery[];
+  isSaved: (lotteryId: number) => boolean;
+  saveLottery: (record: LotteryRecord) => void;
+  removeLottery: (lotteryId: number) => void;
+  getSaved: (lotteryId: number) => SavedLottery | undefined;
+  /** bootstrap・差分同期からサーバーの正規状態を反映する（G3-3）。ローカルにスナップショットが
+   * 無いlotteryIdは`GET /lotteries/:id`（公開API）でベストエフォート補完する。取得失敗時はスキップし、
+   * 次回の差分同期で再試行される。 */
+  applyServerState: (rows: UserLotteryRow[], knownSnapshots?: Map<number, LotteryRecord>) => Promise<void>;
+  /** キュー成功応答からserverVersionのみ更新する（内部用、`offlineQueueResultRouter`から呼ばれる）。 */
+  applyMutationResult: (lotteryId: number, row: { serverVersion: number; savedAt: string }) => void;
+  resetToDefaults: () => void;
+}
+
+const DEFAULT_STATE: Pick<MyLotteriesState, 'saved'> = { saved: [] };
+
+/**
+ * 「自分の抽選」は実API（LotteryRecord）のスナップショットをローカル保存する。
+ * 保存時点のレコード全体を保持することで、一覧表示や通知生成のために毎回API再取得する
+ * 必要をなくし、再取得に失敗した場合でも保存済み情報から表示・通知を継続できるようにする。
+ *
+ * Mobile-G3: ストレージキーはアカウント別namespace（`cardhub::<guest|publicUserId>::my-lotteries`）
+ * で解決される（`lib/accountNamespace.ts`）。namespace切替中の書き込みは`isNamespaceSwitching()`で防ぐ。
+ *
+ * サーバー同期（G3-4）: 現状のUIは「保存（作成）」「削除」のみを行い、既存の保存済み抽選を
+ * 再度PUTするフローが無いため、`expectedServerVersion`によるCAS（更新の競合検出）は発生しない。
+ * PUTは常に新規作成として送る（`status: 'unknown'`固定、個人ステータス管理UIは本計画のスコープ外）。
+ * DELETEは`expectedServerVersion`を省略する（バックエンド仕様上、省略時は常に成功する）。
+ */
+export const useMyLotteriesStore = create<MyLotteriesState>()(
+  persist(
+    (set, get) => ({
+      ...DEFAULT_STATE,
+      isSaved: (lotteryId) => get().saved.some((s) => s.record.id === lotteryId),
+      saveLottery: (record) => {
+        if (isNamespaceSwitching()) return;
+        if (get().saved.some((s) => s.record.id === record.id)) return;
+        const savedAt = new Date().toISOString();
+        set((state) => ({ saved: [...state.saved, { record, savedAt }] }));
+
+        if (isSyncEligible()) {
+          const clientRequestId = generateClientRequestId();
+          enqueueOperation({
+            id: clientRequestId,
+            kind: 'lottery.put',
+            resourceKey: String(record.id),
+            path: `/me/lotteries/${record.id}`,
+            method: 'PUT',
+            payload: { status: 'unknown', snapshot: record, savedAt, clientRequestId },
+          });
+        }
+      },
+      removeLottery: (lotteryId) => {
+        if (isNamespaceSwitching()) return;
+        set((state) => ({ saved: state.saved.filter((s) => s.record.id !== lotteryId) }));
+
+        if (isSyncEligible()) {
+          const clientRequestId = generateClientRequestId();
+          enqueueOperation({
+            id: clientRequestId,
+            kind: 'lottery.delete',
+            resourceKey: String(lotteryId),
+            path: `/me/lotteries/${lotteryId}`,
+            method: 'DELETE',
+            payload: { clientRequestId },
+          });
+        }
+      },
+      getSaved: (lotteryId) => get().saved.find((s) => s.record.id === lotteryId),
+      applyServerState: async (rows, knownSnapshots) => {
+        // `knownSnapshots`はbootstrap（G3-3）がnamespace切替前（=このストアがリセットされる前）に
+        // guest側のスナップショットを退避して渡すためのもの。namespace切替後の差分同期呼び出し
+        // （knownSnapshots省略）では、既にこのnamespaceに存在するローカルスナップショットのみ再利用する。
+        const missing = rows.filter((row) => !get().saved.some((s) => s.record.id === row.lotteryId) && !knownSnapshots?.has(row.lotteryId));
+        const fetched = await Promise.all(
+          missing.map(async (row) => {
+            try {
+              const detail = await fetchLotteryById(row.lotteryId);
+              return { row, record: detail.lottery };
+            } catch {
+              return null; // ベストエフォート。次回の差分同期で再試行される。
+            }
+          })
+        );
+
+        set((state) => {
+          const byId = new Map(state.saved.map((s) => [s.record.id, s]));
+          for (const row of rows) {
+            const existing = byId.get(row.lotteryId);
+            if (existing) {
+              byId.set(row.lotteryId, { ...existing, savedAt: row.savedAt, serverVersion: row.serverVersion });
+            } else {
+              const knownRecord = knownSnapshots?.get(row.lotteryId);
+              if (knownRecord) {
+                byId.set(row.lotteryId, { record: knownRecord, savedAt: row.savedAt, serverVersion: row.serverVersion });
+              }
+            }
+          }
+          for (const result of fetched) {
+            if (!result) continue;
+            if (byId.has(result.row.lotteryId)) continue;
+            byId.set(result.row.lotteryId, { record: result.record, savedAt: result.row.savedAt, serverVersion: result.row.serverVersion });
+          }
+          return { saved: [...byId.values()] };
+        });
+      },
+      applyMutationResult: (lotteryId, row) =>
+        set((state) => ({
+          saved: state.saved.map((s) => (s.record.id === lotteryId ? { ...s, serverVersion: row.serverVersion, savedAt: row.savedAt } : s)),
+        })),
+      resetToDefaults: () => set(DEFAULT_STATE),
+    }),
+    {
+      name: 'my-lotteries',
+      storage: createJSONStorage(() => createAccountScopedStorage('my-lotteries')),
+    }
+  )
+);
+
+registerAccountScopedStore({
+  baseName: 'my-lotteries',
+  resetToDefaults: () => useMyLotteriesStore.getState().resetToDefaults(),
+  rehydrate: () => Promise.resolve(useMyLotteriesStore.persist.rehydrate()),
+});
+
+registerQueueResultHandler('lottery.put', (op, response) => {
+  const parsed = userLotteryMutationResponseSchema.safeParse(response);
+  if (!parsed.success) return;
+  useMyLotteriesStore.getState().applyMutationResult(Number(op.resourceKey), parsed.data);
+});

@@ -1,0 +1,14 @@
+{
+  "name": "cardhub",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "mobile": "npm run start -w @cardhub/mobile",
+    "mobile:typecheck": "npm run typecheck -w @cardhub/mobile",
+    "mobile:lint": "npm run lint -w @cardhub/mobile",
+    "lint": "expo lint"
+  }
+}

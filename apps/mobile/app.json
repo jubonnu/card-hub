@@ -1,0 +1,62 @@
+{
+  "expo": {
+    "name": "CardHub",
+    "slug": "cardhub-mobile",
+    "scheme": "cardhub",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.cardhub.mobile",
+      "buildNumber": "1",
+      "usesAppleSignIn": true
+    },
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#E6F4FE"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "カード抽選の応募締切・当選発表・購入期限をカレンダーに登録するために使用します"
+        }
+      ],
+      "expo-notifications",
+      "expo-secure-store",
+      "expo-apple-authentication",
+      "expo-dev-client"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ca398fbe-a3ba-47b8-be4f-a3f0dffc19de"
+      }
+    },
+    "owner": "jubonu"
+  }
+}
