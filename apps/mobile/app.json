@@ -60,6 +60,12 @@
         "projectId": "ca398fbe-a3ba-47b8-be4f-a3f0dffc19de"
       }
     },
-    "owner": "jubonu"
+    "owner": "jubonu",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/ca398fbe-a3ba-47b8-be4f-a3f0dffc19de"
+    }
   }
 }
