@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 import {
   GUEST_NAMESPACE,
@@ -30,6 +32,35 @@ registerAccountScopedStore({
   rehydrate: rehydrateSpy,
 });
 
+/**
+ * `favoritesStore`等と同じ構成（zustand + persist + `createAccountScopedStorage`）の
+ * 実際のpersist済みストアを使い、`resetToDefaults`がnamespace切替前のnamespaceへ
+ * 空状態を書き込んでしまわないかを検証する（フェイクの`resetSpy`は`set()`を呼ばないため、
+ * この不具合を再現できない）。
+ */
+interface FakePersistedState {
+  value: string;
+  setValue: (value: string) => void;
+  resetToDefaults: () => void;
+}
+
+const useFakePersistedStore = create<FakePersistedState>()(
+  persist(
+    (set) => ({
+      value: '',
+      setValue: (value) => set({ value }),
+      resetToDefaults: () => set({ value: '' }),
+    }),
+    { name: 'fake-persisted', storage: createJSONStorage(() => createAccountScopedStorage('fake-persisted')) }
+  )
+);
+
+registerAccountScopedStore({
+  baseName: 'fake-persisted',
+  resetToDefaults: () => useFakePersistedStore.getState().resetToDefaults(),
+  rehydrate: () => Promise.resolve(useFakePersistedStore.persist.rehydrate()),
+});
+
 function setAuthUser(publicUserId: string | null) {
   useAuthStore.setState({
     user: publicUserId
@@ -47,6 +78,9 @@ describe('accountNamespace', () => {
     await AsyncStorage.removeItem('cardhub::guest::test-store');
     await AsyncStorage.removeItem('cardhub::userA::test-store');
     await AsyncStorage.removeItem('cardhub::userB::test-store');
+    await AsyncStorage.removeItem('cardhub::guest::fake-persisted');
+    await AsyncStorage.removeItem('cardhub::userA::fake-persisted');
+    useFakePersistedStore.setState({ value: '' });
   });
 
   it('初期namespaceはguest、世代は0', () => {
@@ -120,5 +154,37 @@ describe('accountNamespace', () => {
     });
     await syncNamespaceWithAuthUser();
     expect(rehydrateSpy).toHaveBeenCalledTimes(1);
+  });
+
+  describe('サインアウト時にresetToDefaultsが切替元namespaceのデータを消さない（回帰テスト）', () => {
+    it('userAとしてデータを保存→サインアウトしても、userAのディスク上のデータは残る', async () => {
+      setAuthUser('userA');
+      await syncNamespaceWithAuthUser();
+      useFakePersistedStore.getState().setValue('important-data');
+      // persistミドルウェアの書き込みが確実に完了するのを待つ（setValueの内部setItemはfire-and-forget）。
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(await readNamespacedItem('userA', 'fake-persisted')).toContain('important-data');
+
+      setAuthUser(null);
+      await syncNamespaceWithAuthUser(); // サインアウト相当（userA → guest）
+
+      const stillOnDisk = await readNamespacedItem('userA', 'fake-persisted');
+      expect(stillOnDisk).toContain('important-data');
+    });
+
+    it('サインアウト→再サインインでデータが正しく復元される', async () => {
+      setAuthUser('userA');
+      await syncNamespaceWithAuthUser();
+      useFakePersistedStore.getState().setValue('important-data');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      setAuthUser(null);
+      await syncNamespaceWithAuthUser(); // サインアウト
+      expect(useFakePersistedStore.getState().value).toBe(''); // ゲストnamespaceは別データ（空）
+
+      setAuthUser('userA');
+      await syncNamespaceWithAuthUser(); // 再サインイン
+      expect(useFakePersistedStore.getState().value).toBe('important-data');
+    });
   });
 });

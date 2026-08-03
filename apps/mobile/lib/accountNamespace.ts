@@ -67,8 +67,16 @@ function resolveStorageKey(namespace: Namespace, baseName: string): string {
 export function createAccountScopedStorage(baseName: string): StateStorage {
   return {
     getItem: (): Promise<string | null> => AsyncStorage.getItem(resolveStorageKey(getCurrentNamespace(), baseName)),
-    setItem: (_name: string, value: string): Promise<void> =>
-      AsyncStorage.setItem(resolveStorageKey(getCurrentNamespace(), baseName), value),
+    setItem: (_name: string, value: string): Promise<void> => {
+      // zustandのpersistミドルウェアはset()のたびに自動でsetItemを呼ぶため、
+      // `performSwitch`内の`resetToDefaults()`（メモリ上だけをリセットするつもりの呼び出し）も
+      // 素通しすると、namespace切替前（＝切替元の本人のnamespace）に空状態が書き込まれ、
+      // 保存済みデータを消してしまう。namespace切替中（isSwitching）は、全アクションが
+      // `isNamespaceSwitching()`で自身をガードしているため、この間に発生するsetItemは
+      // resetToDefaults由来のものだけであり、無視して問題ない。
+      if (isNamespaceSwitching()) return Promise.resolve();
+      return AsyncStorage.setItem(resolveStorageKey(getCurrentNamespace(), baseName), value);
+    },
     removeItem: (): Promise<void> => AsyncStorage.removeItem(resolveStorageKey(getCurrentNamespace(), baseName)),
   };
 }
