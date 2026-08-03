@@ -91,7 +91,11 @@ export const listLotteriesResponseSchema = z.object({
   lotteries: z.array(lotteryRecordSchema),
   total: z.number(),
   limit: z.number(),
-  offset: z.number(),
+  // ステータス分類（受付中/結果待ち/終了済み）を固定した基準時刻。次ページ取得時はcursorと共に
+  // 必ずこの値をそのまま送り返す（異なるasOfと組み合わせるとサーバー側で400になる）。
+  asOf: z.string(),
+  // 次ページが無い場合はnull。
+  nextCursor: z.string().nullable(),
 });
 
 export type ListLotteriesResponse = z.infer<typeof listLotteriesResponseSchema>;

@@ -69,7 +69,10 @@ export interface FetchLotteriesParams {
   cardType?: string;
   verificationStatus?: string;
   limit?: number;
-  offset?: number;
+  /** 前ページのレスポンスが返した nextCursor。指定する場合は asOf も必ず同じ値を渡すこと。 */
+  cursor?: string;
+  /** 前ページのレスポンスが返した asOf（ページをまたいでステータス分類を固定するため）。 */
+  asOf?: string;
 }
 
 export async function fetchLotteries(
@@ -80,7 +83,8 @@ export async function fetchLotteries(
   if (params.cardType) query.set('cardType', params.cardType);
   if (params.verificationStatus) query.set('verificationStatus', params.verificationStatus);
   if (params.limit != null) query.set('limit', String(params.limit));
-  if (params.offset != null) query.set('offset', String(params.offset));
+  if (params.cursor != null) query.set('cursor', params.cursor);
+  if (params.asOf != null) query.set('asOf', params.asOf);
 
   const qs = query.toString();
   const body = await getJson(`/lotteries${qs ? `?${qs}` : ''}`, signal);

@@ -9,7 +9,7 @@ import { PublicLotteryCard } from '@/components/PublicLotteryCard';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { SecondaryButton } from '@/components/SecondaryButton';
 import { SkeletonCard } from '@/components/SkeletonCard';
-import { LOTTERIES_PAGE_SIZE, usePaginatedLotteries } from '@/hooks/usePaginatedLotteries';
+import { usePaginatedLotteries } from '@/hooks/usePaginatedLotteries';
 import { getApiErrorCopy } from '@/lib/apiClient';
 import { useFilterStore, type LotteryStatusTab } from '@/stores/filterStore';
 import { useMyLotteriesStore } from '@/stores/myLotteriesStore';
@@ -47,6 +47,10 @@ export default function LotteriesScreen() {
     return [...list].sort((a, b) => compareLotteriesByTimeline(a, b, nowIso));
   }, [saved, searchQuery, statusTab, nowIso]);
 
+  // 並び順（受付中→結果待ち→終了済み→日時未設定）はサーバー側で確定済みのため、
+  // ここでは再ソートしない（フィルタのみ行い、取得順をそのまま維持する）。
+  // 再ソートすると、既に読み込んだページとサーバー側の並び順の境界がずれ、
+  // 「もっと見る」で追加した分が末尾ではなく途中に割り込む不具合の原因になる。
   const filteredAll = useMemo(() => {
     if (pageState.status !== 'ready') return [];
     let list = pageState.items;
@@ -58,11 +62,10 @@ export default function LotteriesScreen() {
     if (statusTab !== 'all') {
       list = list.filter((r) => derivePublicTimelineStatus(r, nowIso) === statusTab);
     }
-    return [...list].sort((a, b) => compareLotteriesByTimeline(a, b, nowIso));
+    return list;
   }, [pageState, searchQuery, statusTab, nowIso]);
 
-  const hasMore =
-    pageState.status === 'ready' && pageState.items.length < pageState.total && pageState.lastPageSize >= LOTTERIES_PAGE_SIZE;
+  const hasMore = pageState.status === 'ready' && pageState.hasMore;
 
   const count = mode === 'all' ? filteredAll.length : filteredMine.length;
 
