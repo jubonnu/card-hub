@@ -1,147 +1,80 @@
-# CardHub 環境構成リファレンス（2026-08-03時点）
+# CardHub 環境まとめ
 
-CardHubのバックエンド（`x-post-fetcher/apps/worker`）・モバイルアプリ（`CardHub/apps/mobile`）が
-現在どの環境を持ち、それぞれ何のためにあり、どう起動・デプロイするかをまとめる。
+## 1. 環境は3つ
 
----
-
-## 1. 全体像
-
-| 環境 | Worker | Turso DB | 用途 |
+| 環境 | 何か | Worker名 | DB名 |
 |---|---|---|---|
-| ローカル | `node src/node-server.ts`（Node直接起動） | ローカルSQLiteファイル（`file:local.db`） | 手元での動作確認・実装中の検証。外部コストゼロ |
-| ステージング | `x-post-ingest-staging`（Cloudflare Workers） | `cardhub-staging`（Turso） | 実機での動作確認・Sandbox課金テスト・リリース前の最終確認。本番データとは物理的に分離 |
-| 本番 | `x-post-ingest`（Cloudflare Workers） | `x-post-fetcher`（Turso） | 実際に稼働中のサービス本体。2026-07-27から抽選収集用として稼働、2026-08-03にモバイルアプリ向け機能（認証・同期・課金・統計）を追加 |
+| ローカル | 自分のMacだけで動く。外部コストゼロ | - | ローカルファイル |
+| ステージング | 実機で試す用。本番とは別のDB・Workerを使う | `x-post-ingest-staging` | `cardhub-staging` |
+| 本番 | 実際にリリースするアプリが繋がる先 | `x-post-ingest` | `x-post-fetcher` |
 
-モバイル側はEAS Buildの4つのビルドプロファイル（`development` / `development-simulator` / `preview` / `production`）で、上記のうちどの環境と通信するかが決まる（3章参照）。
+モバイルのビルド（`development` / `preview` / `production`）は、上記のどれか1つに繋がるように設定されている。
 
----
-
-## 2. バックエンド環境ごとの詳細
-
-### 2.1 ローカル
-
-- **DB**: ローカルファイル（`file:local.db`）。`npm run db:migrate`実行時に自動生成される。抽選データは無し（クローラーもローカルでは動かさない前提）
-- **起動コマンド**:
-  ```
-  cd x-post-fetcher
-  INGEST_TOKEN=dev-secret TURSO_DATABASE_URL=file:local.db npm run worker:dev
-  ```
-  デフォルトで`http://localhost:8787`で待ち受ける
-- **用途**: バックエンドのコード変更を最速で試す。認証・課金系のSecretは通常未設定のままなので、`/auth/*`・`/webhooks/revenuecat`等は503 fail-closedになる（`/lotteries`等の公開APIは動く）
-
-### 2.2 ステージング
-
-- **Worker名**: `x-post-ingest-staging`
-- **URL**: `https://x-post-ingest-staging.bakushi-log.workers.dev`
-- **DB**: `cardhub-staging`（Turso、`aws-ap-northeast-1`）
-- **ENVIRONMENT設定**: `development`（本番の厳格な必須チェック——Apple Sign-In鍵一式の必須化等——を回避しつつ、本番と同じ鍵を追加登録することで実行挙動は本番相当にしてある）
-- **データ状態（2026-08-03時点）**:
-  - `lotteries` 126件・`lottery_sources` 125件・`lottery_field_history` 337件（本番`x-post-fetcher`から読み取り専用でコピー済み、本番側は無変更）
-  - `users`等の認証・課金テーブルは、これまでのテスト操作で作成されたテストユーザーのみ
-- **RevenueCat連携**: Webhook「CardHub Staging」（配信対象 Sandbox only）
-- **再デプロイコマンド**:
-  ```
-  cd x-post-fetcher/apps/worker
-  npx wrangler deploy --env staging
-  ```
-- **Secret登録コマンド例**:
-  ```
-  echo "<値>" | npx wrangler secret put <NAME> --env staging
-  ```
-- **用途**: 実機での機能確認、Apple Sandboxでの課金テスト、リリース前の「本番相当」動作確認。ここでの操作は本番DBに一切影響しない
-
-### 2.3 本番
-
-- **Worker名**: `x-post-ingest`
-- **URL**: `https://x-post-ingest.bakushi-log.workers.dev`
-- **DB**: `x-post-fetcher`（Turso、2026-07-27から稼働中の本体DB。抽選収集Cronの書き込み先でもある）
-- **ENVIRONMENT設定**: `production`（Apple Sign-In鍵一式・`ACCOUNT_DELETION_GRACE_DAYS`等の必須チェックが有効）
-- **データ状態**: 実際に収集され続けている抽選データ（本稿執筆時点126件、増加中）。認証・課金・統計テーブルは2026-08-03にマイグレーション追加したばかりで、実ユーザーデータはまだこれから
-- **RevenueCat連携**: Webhook「CardHub Production」（配信対象 Production only）
-- **再デプロイコマンド**:
-  ```
-  cd x-post-fetcher/apps/worker
-  npx wrangler deploy
-  ```
-  （`wrangler.toml`に`[env.staging]`が定義されているため、`--env`省略時は警告が出るが、トップレベル＝本番設定へ正しくデプロイされる）
-- **Secret登録コマンド例**:
-  ```
-  echo "<値>" | npx wrangler secret put <NAME>
-  ```
-- **用途**: 実際にリリースするアプリが接続する唯一の環境。TestFlight・App Store配信のビルドはすべてここを向く
+| モバイルのビルド | 繋がる先 |
+|---|---|
+| `development`（Metro併用） | ローカル |
+| `preview` | ステージング |
+| `production` | 本番 |
 
 ---
 
-## 3. モバイル（EAS Build プロファイル）
+## 2. 実行コマンド
 
-`CardHub/apps/mobile/eas.json`で定義。`EXPO_PUBLIC_*`環境変数はローカル`.env`ではなく、**EAS Environment Variables**（プロファイルの`environment`フィールドで指定した環境名にひも付く、Expoのクラウド側管理機能）から読み込む。ローカル`.env`はgitignore対象でビルドにもアップロードされないため、両者が競合することはない。
+### ローカル
 
-| プロファイル | `environment` | `channel`（EAS Update） | 接続先 | 配布形式 | 用途 |
-|---|---|---|---|---|---|
-| `development` | 未設定（ローカル`.env`依存） | `development` | 通常ローカル/ステージング | 内部（devClient、Metro必須） | 開発中のライブリロード確認 |
-| `development-simulator` | 未設定 | `development-simulator` | 同上 | シミュレーター専用 | Macのシミュレーターでの確認 |
-| `preview` | `preview` | `preview` | **ステージング** | 内部（Ad Hoc、Metro不要） | 実機での本番相当動作確認、Sandbox課金テスト |
-| `production` | 未設定（EAS側は`production`環境に自動解決） | `production` | **本番** | store（TestFlight/App Store経由のみ） | 実リリース用ビルド |
-
-### ビルドコマンド
+```
+cd x-post-fetcher
+INGEST_TOKEN=dev-secret TURSO_DATABASE_URL=file:local.db npm run worker:dev
+```
 
 ```
 cd CardHub/apps/mobile
-
-# 実機で今すぐ試したい（本番相当・ステージング接続）
-eas build --profile preview --platform ios
-
-# リリース用（TestFlight/App Store提出前提）
-eas build --profile production --platform ios
-
-# 開発中のライブリロード確認（Metro併用）
 eas build --profile development --platform ios
 npx expo start --dev-client
 ```
 
-### EAS環境変数の確認・登録コマンド
+### ステージング（実機ですぐ試したい時）
 
+Workerの再デプロイ:
 ```
-# 一覧（値は表示されない）
-npx eas env:list --environment preview
-npx eas env:list --environment production
-
-# 登録
-npx eas env:create <preview|production> --name <NAME> --value "<値>" --visibility plaintext --non-interactive
+cd x-post-fetcher/apps/worker
+npx wrangler deploy --env staging
 ```
 
-現在`preview`・`production`それぞれに登録済みの変数名（値は非公開）:
-`EXPO_PUBLIC_API_BASE_URL` / `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY` / `EXPO_PUBLIC_REVENUECAT_MONTHLY_PRODUCT_ID` / `EXPO_PUBLIC_REVENUECAT_LIFETIME_PRODUCT_ID`
-
-### EAS Update（OTA配信、2026-08-03導入）
-
-`expo-updates`導入済み。`eas build`（ネイティブ再ビルド、数分かかる）とは別に、**JSのみの変更**であれば`eas update`で数秒〜数十秒で配信できる。ネイティブコード側の変更（ライブラリ追加・`app.json`のネイティブ設定変更等）は`eas update`では届かず、必ず`eas build`が必要（このビルドを一度インストールし直すまでは、そのビルドは新しいupdateを受け取れる状態にならない）。
-
-- `runtimeVersion`ポリシー: `appVersion`（`app.json`の`version`が同じ間は同じランタイムとみなされ、updateが届く。ネイティブ変更をしたら`version`を上げる運用が前提）
-- ビルドプロファイルと同名の`channel`が対応（上表参照）。`preview`ビルドには`preview`チャンネルのupdateが、`production`ビルドには`production`チャンネルのupdateが届く
-
-**配信コマンド**:
+アプリのビルド（毎回作り直さなくてよい。JSだけの変更ならupdateで十分）:
 ```
 cd CardHub/apps/mobile
-eas update --branch <development|preview|production> --platform ios --message "<変更内容>" --non-interactive
+eas build --profile preview --platform ios       # ネイティブ変更があった時のみ
+eas update --branch preview --platform ios --message "変更内容"   # 普段はこちら
 ```
 
-配信後、対象デバイスでアプリを**完全に終了して再起動**すると反映される（起動時にチェックしにいく仕組みのため、起動中の裏側では自動反映されない）。
+### 本番（リリース用）
+
+```
+cd x-post-fetcher/apps/worker
+npx wrangler deploy
+```
+
+```
+cd CardHub/apps/mobile
+eas build --profile production --platform ios
+eas update --branch production --platform ios --message "変更内容"
+```
 
 ---
 
-## 4. RevenueCat（プロジェクト共通、環境をまたいで1つ）
+## 3. 課金（RevenueCat）はどこで確認できる？
 
-- Project: **CardHub**（同一Apple/Cloudflareアカウント内に無関係な別プロジェクト「Bakushi Log」が存在するため操作時は要注意）
-- Entitlement: `premium`
-- Offering: `default`（Package: `$rc_monthly` / `$rc_lifetime`）
-- Product: `cardhub_premium_monthly`（月額¥400） / `cardhub_premium_lifetime`（買い切り¥2,000）
-- Webhook: 「CardHub Staging」（Sandbox only、ステージングWorkerへ）と「CardHub Production」（Production only、本番Workerへ）の2本を個別登録済み
-- Secret API Key・Product IDはプロジェクト単位の値のため、ステージング・本番のWorker Secretで同じ値を使い回している（Sandbox/Productionの区別はイベント側の`environment`フィールドで行われる）
+**ステージングでのみ確認する。** `preview`ビルドをインストールし、実機のSandbox Apple IDで購入操作すれば、実際に課金額は発生せずに一連の流れ（購入→サーバー反映→premium機能解放）を確認できる。
+
+- ローカルは課金系のSecretが基本未設定なので確認不可
+- 本番は実際に課金が発生するため、動作確認目的では使わない
 
 ---
 
-## 5. 補足: 本番データのステージングへの反映について
+## 4. 忘れやすい注意点
 
-ステージングDBの`lotteries`系テーブルは本番からの**一度きりのコピー**であり、自動同期はしていない。本番側で新しい抽選が追加されても、ステージング側には反映されない。再度最新化したい場合は、同様の読み取り専用コピー手順を再実行する必要がある（自動化はまだしていない）。
+- モバイルの環境変数（Worker URL等）はローカル`.env`ではなく**EAS Environment Variables**で管理（`npx eas env:list --environment <preview|production>`で確認、値は非表示）
+- ネイティブ変更（ライブラリ追加等）は`eas update`では届かない。必ず`eas build`が必要
+- ステージングDBの抽選データは本番からの**一度きりのコピー**。自動同期はしていないので、古くなったら手動で入れ直す
+- Secret登録: `echo "<値>" | npx wrangler secret put <NAME>`（本番）／`--env staging`を付けるとステージング
