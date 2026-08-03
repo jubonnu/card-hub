@@ -203,9 +203,6 @@ function ApiLotteryDetailBody({ record, nowIso }: { record: LotteryRecord; nowIs
           </View>
         </View>
 
-        <Text style={[styles.sourceNote, { color: theme.colors.textFaint }]}>
-          このデータはX投稿から自動抽出されたものです（verificationStatus: {record.verificationStatus ?? '不明'}）
-        </Text>
       </ScrollView>
 
       <View
@@ -467,10 +464,6 @@ const styles = StyleSheet.create({
   urlText: {
     fontSize: 12,
     flexShrink: 1,
-  },
-  sourceNote: {
-    fontSize: 11,
-    lineHeight: 16,
   },
   footer: {
     padding: 20,
