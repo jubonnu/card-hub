@@ -249,10 +249,168 @@ G1 18章・20-12節で挙げられていた項目のうち、本フェーズに�
 
 ### 15.2 リリース前Blocker
 
-- **`failed_retryable`イベントの自動再処理が未実装**: Secret API Key未設定時・RevenueCat REST APIの一時失敗時、Webhookイベントは`revenuecat_events.processingStatus = 'failed_retryable'`として記録されるのみで、これを拾い直して再照合する仕組み（cron等）が存在しない。現状は手動でのDBクエリ・再送トリガーに依存する。**本番リリース前に実装が必要**。
+- ~~`failed_retryable`イベントの自動再処理が未実装~~ **2026-08-02: 通常イベントについて解消**（`src/services/revenuecatEventRetryService.ts`、18章参照）。訂正: 当初「解消」と報告したが、TRANSFERイベントは`transferred_from`/`transferred_to`をrawPayloadとして保持していなかったため自動再試行できず、**Transfer Behaviorを使用する本仕様では残存Blockerだった**。同日中に`transferredFromJson`/`transferredToJson`列（migration 0017）を追加し、TRANSFERの自動再試行にも対応した（19章参照）。この対応より前に`failed_retryable`になった古い行（コンテキスト未保存）のみ引き続き手動対応が必要（`skippedTransferNoContext`として可視化）。
+- **再試行基盤の高度化（retryCount・指数バックオフ・最大試行回数・failed_permanent・CASによる二重処理防止）が未実装**: 既存のApple失効再試行（`appleRevocationRetryRepository.ts`）と同等の仕組みは無く、現在は「毎回`failed_retryable`全件を再スキャンし、成功したら状態遷移で自然に対象から外れる」という単純な設計に留まる。データ破損リスクは低い（`upsertSubscriptionEntitlement`のupsert+順序逆転ガードにより冪等）が、真に同時実行するCronが重なった場合の二重REST呼び出し等は未対策。19章参照。
 - RevenueCatダッシュボードの実際のHMAC署名仕様（ヘッダ名・タイムスタンプ付き署名形式）が公式ドキュメント記載通りか、G4-5で実際のWebhook送信を見て確認が必要。
 - TRANSFERイベントの`transferred_from`/`transferred_to`の実際のフィールド名・型がRevenueCatの本番Webhookペイロードと一致するか、G4-5で確認が必要。
 
 ---
 
-**本計画に基づき、コード変更・DB変更・外部サービス操作のいずれも未実施です。ここで停止します。**
+# 改訂（G4-5事前確認、2026-08-02・提示のみ・外部操作未実行）
+
+## 16. G4-5事前確認: Apple/RevenueCat認証情報の整理（ユーザー承認・確定事項）
+
+価格・ID等の確定事項（**月額¥400・買い切り¥2,000**（2026-08-03最終確定、当初案の¥680/¥3,980から変更。買い切りは¥1,980を希望したがApple価格Tierに存在しないため最も近い¥2,000を採用）・トライアル無し・Product ID/Entitlement ID/Offering ID/Package ID・Transfer Behavior・Family Sharing無効・Webhook認証=Authorization header+公式HMAC併用）に加え、以下を確定事項として記録する。
+
+**App Store Connect API Key**（商品・価格インポート用）
+- 必要情報: .p8ファイル・Key ID・Issuer ID・Vendor番号
+- 作成: Users and Access → Integrations → App Store Connect API
+- 必要ロール: App Manager以上
+
+**In-App Purchase Key**（Apple取引の検証・記録用、StoreKit 2で必須）
+- 必要情報: **.p8ファイル・Key ID・Issuer ID**（Bundle IDはキー自体の情報ではない）
+- 作成: Users and Access → Integrations → In-App Purchase
+- **必要ロール: Account HolderまたはAdmin**（App Store Connect API Keyより厳しい。App Managerでは作成できない）
+- Bundle ID（`com.cardhub.mobile`）はキー情報としてではなく、**RevenueCatダッシュボード側のiOSアプリ設定**として登録する
+- App-Specific Shared Secretは不要（StoreKit 1専用のため、react-native-purchases v10.6.0では対象外）
+
+**トラブルシュート**: App Store ConnectでApp Store Connect API・In-App Purchaseのメニューが見えない場合、Paid Apps Agreement未締結だけでなく、**現在のユーザーロールがAccount Holder/Adminに満たない可能性**も確認すること。
+
+## 17. G4-5ステップ2: ユーザー自身による事前確認（実行中）
+
+ユーザーがApp Store Connect上で以下8項目を直接確認する（Claude側では確認不可能な外部サービスの状態のため）。確認結果の報告を待ち、その後の手順（キー生成・商品作成・RevenueCat設定等）を案内する。
+
+1. Paid Apps Agreementの状態
+2. 銀行口座情報の状態
+3. 税務情報の状態
+4. 現在のユーザーロール
+5. App Store Connect APIメニューの有無
+6. In-App Purchaseメニューの有無
+7. CardHubアプリ登録の有無
+8. Bundle IDが`com.cardhub.mobile`か
+
+この時点でキー生成・商品作成・RevenueCat設定のいずれも未実行。
+
+---
+
+## 18. G4-5準備中の並行実装（2026-08-02、外部操作は未実行）
+
+App Store Connect側の確認をユーザーが進めている間、外部サービスに依存しないバックエンド実装を並行して完了させた。
+
+**1. `failed_retryable`イベントの自動再処理**（`docs/known-gaps.md`記載の課金公開前Blockerを解消）
+- `src/services/revenuecatEventRetryService.ts`新設: `revenuecat_events`から`processingStatus='failed_retryable'`を古い順に取得し、REST再照合→反映を試みる
+- `revenuecatWebhookProcessor.ts`の`resolveCandidateAppUserId`・`verifyAndApplyForResolvedUser`をexportし、Webhook受信経路と再試行経路の両方から再利用（ロジック重複を避ける）
+- TRANSFERイベントは`revenuecat_events`がrawPayload（`transferred_from`/`transferred_to`）を保持しない設計のため自動再試行の対象外とし、`skippedTransfer`件数として可視化（手動対応が必要）
+- 内部API`POST /internal/revenuecat-events/retry-batch`（`INGEST_TOKEN`によるBearer認証、既存の`/internal/apple-revocation/retry-batch`と同じ方式）と、`src/index.ts`の`scheduled`ハンドラ（Cron Trigger、既存のApple失効再試行と同じ`ctx.waitUntil`パターン）の両方から呼べる
+- `wrangler.toml`の`[triggers]`（実際のCron設定）は既存のApple失効再試行と同様、本フェーズではまだ追加していない（実デプロイ時に設定）
+- テスト8件追加（REST成功/失敗/Secret未設定/alias解決/未知ユーザーの終了処理/TRANSFERスキップ/順序逆転ガード/複数イベント一括処理）
+
+**2. staging環境のscaffolding**
+- `wrangler.toml`に`[env.staging]`ブロックを追加（`name = "x-post-ingest-staging"`）。実デプロイはまだ行っていない
+- Webhook疎通確認は本番Turso/production Workerではなく、まずこのstaging Worker + 別のTurso DBで行う方針をコメントで明記（Sandboxイベントが本番DBへ混入しないことを構造的に担保する）
+
+**3. 環境変数ドキュメントの整備**
+- `wrangler.toml`にRevenueCat関連の環境変数名（値は書かない）を追記
+- `apps/mobile/.env.example`に`EXPO_PUBLIC_REVENUECAT_IOS_API_KEY`等をコメントとして追記
+- App Store Connect API Key・In-App Purchase Keyはこのリポジトリのどこにも保存しない（RevenueCatダッシュボードへ直接アップロードするもの）ことを明記
+
+**テスト結果**: バックエンド392 tests（新規8件）、typecheckクリーン。モバイル側のコード変更は無し（`.env.example`のコメント追記のみ）。
+
+---
+
+## 19. TRANSFERイベントの自動再処理対応（2026-08-02、訂正・追加実装）
+
+18章で「`failed_retryable`イベントの自動再処理」を完了と報告したが、ユーザー指摘により**TRANSFERイベントは対象外のままだった**ことが判明。Transfer Behaviorを使用する本仕様では、これは残存Blockerとして扱うべき、との訂正を受け、以下を追加実装した。
+
+**1. TRANSFER再試行に必要な最小コンテキストの保存**
+- `revenuecat_events`へ`transferred_from_json`・`transferred_to_json`列を追加（migration `0017_keen_red_hulk.sql`、空DB・0016→0017の両方の適用を再検証済み）
+- rawPayload全体は保存しない方針を維持（`transferred_from`/`transferred_to`のみ）。`event_timestamp`・`environment`は元々`revenuecat_events`の既存列（`event_timestamp`・`environment`）にTRANSFER以外も含め全イベント共通で保存済みだったため、追加不要だった
+- Webhook受信時（`processTransferEvent`、`revenuecatWebhookProcessor.ts`）にパース成功直後、`updateRevenuecatEventTransferContext`でこの2列へ保存する
+
+**2. Cron再試行時の双方向REST再照合**
+- `processTransferEvent`内の「移譲元・移譲先それぞれをREST照合」ロジックを`processTransferSides`として切り出し、Webhook受信経路（`revenuecatWebhookProcessor.ts`）・Cron再試行経路（`revenuecatEventRetryService.ts`）の両方から共通利用
+- `retryFailedRevenuecatEventsBatch`は`eventType === "TRANSFER"`の行について、保存済み`transferredFromJson`/`transferredToJson`を復元し、両側を再照合する（`retryTransferRow`）
+- コンテキストが保存されていない古い行（この対応より前に`failed_retryable`になったもの）は`skippedTransferNoContext`として区別し、手動対応が必要なことを可視化する
+
+**3. 再試行基盤の実装状況（正直な報告）**
+
+| 項目 | 状況 |
+|---|---|
+| retryCount | ❌ 未実装。試行回数を記録する列・ロジックが無い |
+| nextRetryAt | ❌ 未実装。毎回のCron実行で`failed_retryable`全件を無条件に再スキャンする（指数バックオフによる次回時刻の制御は無い） |
+| 指数バックオフ | ❌ 未実装 |
+| 最大再試行回数 | ❌ 未実装（上限が無いため、恒久的に失敗し続けるイベントも際限なく再スキャンされ続ける） |
+| failed_permanent | ❌ 未実装。恒久的失敗を終了状態として分離する仕組みが無い |
+| CASまたは二重処理防止 | ⚠️ 部分的。DB列レベルのフェンシングトークン（Apple失効再試行の`claimId`相当）は無い。ただし`upsertSubscriptionEntitlement`のupsert＋順序逆転ガードにより、同一イベントが二重に適用されてもデータ破損はしない（冪等）。真に同時実行するCron同士が同一行を重複処理した場合の無駄なREST呼び出しは未対策 |
+| Cron間隔 | ❌ 未設定。`wrangler.toml`の`[triggers]`自体、本番・staging問わずまだ追加していない（既存のApple失効再試行と同じ状態） |
+| 1回の処理上限 | ✅ 実装済み。`limit`パラメータ（既定50件）で1バッチあたりの処理件数を制御 |
+| internal API用Secretの分離 | ❌ 未分離。既存の`/internal/apple-revocation/retry-batch`と同じ`INGEST_TOKEN`を流用している（専用シークレットは無い） |
+| staging Cron/DBの分離 | ⚠️ 準備のみ。`wrangler.toml`に`[env.staging]`のscaffoldingはあるが、Cron Trigger自体（本番・staging問わず）はまだ設定・デプロイしていない |
+
+上記のうちretryCount・nextRetryAt・指数バックオフ・最大試行回数・failed_permanent・CAS・internal API Secret分離は、Apple失効再試行（`appleRevocationRetryRepository.ts`・`appleRevocationBackoff.ts`）に既にある仕組みと同等のものが無く、意図的に単純化した設計のまま残っている。個人開発規模のイベント量では実害が出にくいと判断しているが、本番の課金運用を継続する上ではいずれ同等の仕組みが必要になる可能性が高い。
+
+**4. TRANSFER追加テスト**（`tests/revenuecatEventRetry.test.ts`、`tests/billingWebhook.test.ts`）
+- A→B再照合成功／REST一時失敗後のCron成功／移行元のみ未知／移行先のみ未知／同一イベントへの2回連続Cron実行が二重反映しないこと／順序逆転ガード、の6件を追加
+- 「最大再試行回数超過」のテストは**追加していない**（上記の通りこの機能自体が未実装のため、テストしようがない）
+
+**テスト結果**: バックエンド398 tests（新規6件+既存1件へのアサーション追加）、typecheckクリーン、空DB・0016→0017移行の両方を再検証済み。
+
+---
+
+## 20. G4-5ステップ3: RevenueCat外部設定・ステージング環境構築（2026-08-03、実施済み）
+
+App Store Connect側の事前確認（16章・17章）完了後、実際にRevenueCat・Cloudflare・Turso側の外部設定を実施した。
+
+**RevenueCatダッシュボード側（完了）**
+- Project「CardHub」（Project ID: `proj55666d03`）作成済み（※同一アカウント内に無関係な別プロジェクト「Bakushi Log」が存在するため、作業時は必ずプロジェクト選択を確認すること）
+- App「CardHub (App Store)」登録済み（Bundle ID: `com.cardhub.mobile`）
+- Entitlement `premium`、Offering `default`（`$rc_monthly`/`$rc_lifetime`）、実Apple商品（`cardhub_premium_monthly`/`cardhub_premium_lifetime`）の紐付け確認済み
+- Public (SDK) API Key・Secret API Key（V1、`GET /v1/subscribers`用）発行済み
+- Webhook「CardHub Staging」登録済み: URL・Authorization header・HMAC signing有効化・配信対象「Sandbox only」
+
+**Turso DB（新規作成）**
+- CardHub用の本番DBはまだ存在しないため、まずステージング専用DB `cardhub-staging` を新規作成し、既存マイグレーションを適用
+- 本番DBは未作成のまま（実リリース直前にまとめて作成する方針）
+
+**Cloudflare Workers（新規デプロイ）**
+- `wrangler.toml`の`[env.staging]`を使い`x-post-ingest-staging`を初回デプロイ: `https://x-post-ingest-staging.bakushi-log.workers.dev`
+- 登録済みSecret（`--env staging`）: `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` / `ENVIRONMENT=development`（後に`preview`→`development`へ変更、詳細は22章）/ `REVENUECAT_SECRET_API_KEY` / `REVENUECAT_MONTHLY_PRODUCT_ID` / `REVENUECAT_LIFETIME_PRODUCT_ID` / `REVENUECAT_WEBHOOK_AUTH_HEADER`（ランダム生成）/ `REVENUECAT_WEBHOOK_HMAC_SECRET`（RevenueCat発行）/ `APPLE_CLIENT_ID`（`com.cardhub.mobile`）/ `JWT_SIGNING_KEY_CURRENT_KID`（`v1`）/ `JWT_SIGNING_KEY_CURRENT_SECRET`（ランダム生成）
+- `POST /webhooks/revenuecat`・`POST /auth/apple`とも、Secret未設定時の503ではなく想定通りのバリデーション/認証エラーを返すことを確認済み
+- 未登録: `INGEST_TOKEN`・Apple authorizationCode交換用の任意4項目（`APPLE_TEAM_ID`等、.p8鍵発行までは不要）
+
+**モバイル側（`apps/mobile/.env`、gitignore対象）**
+- `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY` / `EXPO_PUBLIC_REVENUECAT_MONTHLY_PRODUCT_ID` / `EXPO_PUBLIC_REVENUECAT_LIFETIME_PRODUCT_ID` を設定済み
+- `EXPO_PUBLIC_API_BASE_URL`をステージングWorker URL（`https://x-post-ingest-staging.bakushi-log.workers.dev`）へ変更済み
+
+---
+
+## 21. G4-5ステップ4: Webhookスキーマ不具合の発見・修正（2026-08-03）
+
+RevenueCatダッシュボードの「Send a Test Webhook」機能でE2E疎通確認を行ったところ、`POST /webhooks/revenuecat`が422 VALIDATION_ERRORを返す不具合を発見した。
+
+**原因**: `validation/billingSchemas.ts`の`revenueCatWebhookEventSchema`で、`entitlement_id` / `entitlement_ids` / `transaction_id` / `original_transaction_id`が`.optional()`のみ（`.nullable()`無し）だった。RevenueCatは該当イベント種別に存在しないフィールドを「キー省略」ではなく明示的に`null`で送るため、Zodの`.optional()`（`undefined`のみ許容）では拒否されていた。`services/revenuecatWebhookProcessor.ts`側の型（`originalAppUserId?: string | null`等）は元々nullを想定していたため、スキーマ側だけが実態とズレていた。
+
+**影響範囲**: RevenueCatのTESTイベントに限らず、`entitlement_ids`が無い実イベント（対象外プロダクトの通知等）や`transaction_id`/`original_transaction_id`が無いイベントも同様に422で拒否され、RevenueCat側は自動リトライの末に配信を諦める＝premium状態が更新されないままになる、公開前に必ず踏む本番影響のあるバグだった。
+
+**修正**: 該当4フィールド + 他の「Sometimesフィールド」（`original_app_user_id` / `aliases` / `environment` / `event_timestamp_ms` / `product_id` / `period_type` / `purchased_at_ms` / `store` / `ownership_type`）すべてに`.nullable()`を追加。`tests/billingWebhook.test.ts`に回帰テストを1件追加（399 tests全パス、typecheckクリーン）。ステージングへ再デプロイ後、RevenueCatダッシュボードから再度Test Webhookを送信し200 OK・`ignored_unknown_event`を確認した。
+
+## 22. G4-5ステップ5: 実機Sandbox購入テストの実施（2026-08-03、完了）
+
+ユーザー操作（Sandbox Tester作成・実機UDID登録・開発ビルド作成・実機での購入操作）と、Claude側の作業（Worker設定・ビルドコマンド実行・DB検証）を分担して完走した。
+
+1. **Sandbox Tester Apple ID作成**（App Store Connect → Users and Access → Sandbox → Testers）: `tesutowant@gmail.com`（国: 日本）を作成
+2. **実機のUDID登録**（`eas device:create` → Webサイト経由でプロビジョニングプロファイルをインストール）: iPhone実機を登録
+3. **開発ビルド作成**（`eas build --profile development --platform ios`）: 既存のDistribution証明書・Push Keyを再利用（他プロジェクトと共有、Team単位のリソースのため問題無し）。ビルドID `51054c34-17cc-484a-812a-1be44f2890fd`
+4. 実機にインストール後、`expo start --dev-client`でMetro接続 → RevenueCatネイティブモジュールが正常動作することを確認（以前の「Native module (RNPurchases) not found」エラーは、RevenueCat導入前の古いビルドが実機に残っていたことが原因と判明、新ビルドで解消）
+
+### 追加で発覚・修正した設定不備
+
+実機でSign in with Appleがすべて失敗する不具合が発覚。原因は、ステージングの`ENVIRONMENT`を`preview`に設定していたため、`routes/auth.ts`の`STRICT_APPLE_EXCHANGE_ENVIRONMENTS`（`production`/`preview`）に該当し、まだ発行していないApple Sign-In用鍵一式（`APPLE_TEAM_ID`等、authorizationCode交換・失効の任意機能用）が必須化されてしまっていたため。ステージングは実態として開発環境であり、この任意機能の鍵もまだ不要なため、`ENVIRONMENT`を`preview`から`development`へ変更して解決（`STRICT_APPLE_EXCHANGE_ENVIRONMENTS`は`development`/`test`を含まない）。
+
+### Sandbox購入テスト結果（成功）
+
+Sign in with Apple成功後、Paywall画面から月額プラン（¥400）を購入。Sandbox決済シート・生体認証確認を経て購入完了。ステージングDB（`cardhub-staging`）で以下を確認済み:
+- `revenuecat_events`: `INITIAL_PURCHASE`イベントを受信し`processing_status = processed`
+- `subscription_entitlements`: 該当ユーザーで`premium_active = 1`、`product_id = cardhub_premium_monthly`、`product_type = subscription`、`environment = SANDBOX`
+
+購入直後の即時照合（`source = refresh`）・Webhook受信の両経路とも正しく機能し、「アプリでの購入操作 → RevenueCat → CardHubサーバー → DB反映」の一連のフローが実機で完全に検証できた。テスト用サブスクリプションはSandbox上でキャンセル済み。
