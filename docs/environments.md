@@ -77,12 +77,12 @@ CardHubのバックエンド（`x-post-fetcher/apps/worker`）・モバイルア
 
 `CardHub/apps/mobile/eas.json`で定義。`EXPO_PUBLIC_*`環境変数はローカル`.env`ではなく、**EAS Environment Variables**（プロファイルの`environment`フィールドで指定した環境名にひも付く、Expoのクラウド側管理機能）から読み込む。ローカル`.env`はgitignore対象でビルドにもアップロードされないため、両者が競合することはない。
 
-| プロファイル | `environment` | 接続先 | 配布形式 | 用途 |
-|---|---|---|---|---|
-| `development` | 未設定（ローカル`.env`依存） | 通常ローカル/ステージング | 内部（devClient、Metro必須） | 開発中のライブリロード確認 |
-| `development-simulator` | 未設定 | 同上 | シミュレーター専用 | Macのシミュレーターでの確認 |
-| `preview` | `preview` | **ステージング** | 内部（Ad Hoc、Metro不要） | 実機での本番相当動作確認、Sandbox課金テスト |
-| `production` | 未設定（EAS側は`production`環境に自動解決） | **本番** | store（TestFlight/App Store経由のみ） | 実リリース用ビルド |
+| プロファイル | `environment` | `channel`（EAS Update） | 接続先 | 配布形式 | 用途 |
+|---|---|---|---|---|---|
+| `development` | 未設定（ローカル`.env`依存） | `development` | 通常ローカル/ステージング | 内部（devClient、Metro必須） | 開発中のライブリロード確認 |
+| `development-simulator` | 未設定 | `development-simulator` | 同上 | シミュレーター専用 | Macのシミュレーターでの確認 |
+| `preview` | `preview` | `preview` | **ステージング** | 内部（Ad Hoc、Metro不要） | 実機での本番相当動作確認、Sandbox課金テスト |
+| `production` | 未設定（EAS側は`production`環境に自動解決） | `production` | **本番** | store（TestFlight/App Store経由のみ） | 実リリース用ビルド |
 
 ### ビルドコマンド
 
@@ -113,6 +113,21 @@ npx eas env:create <preview|production> --name <NAME> --value "<値>" --visibili
 
 現在`preview`・`production`それぞれに登録済みの変数名（値は非公開）:
 `EXPO_PUBLIC_API_BASE_URL` / `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY` / `EXPO_PUBLIC_REVENUECAT_MONTHLY_PRODUCT_ID` / `EXPO_PUBLIC_REVENUECAT_LIFETIME_PRODUCT_ID`
+
+### EAS Update（OTA配信、2026-08-03導入）
+
+`expo-updates`導入済み。`eas build`（ネイティブ再ビルド、数分かかる）とは別に、**JSのみの変更**であれば`eas update`で数秒〜数十秒で配信できる。ネイティブコード側の変更（ライブラリ追加・`app.json`のネイティブ設定変更等）は`eas update`では届かず、必ず`eas build`が必要（このビルドを一度インストールし直すまでは、そのビルドは新しいupdateを受け取れる状態にならない）。
+
+- `runtimeVersion`ポリシー: `appVersion`（`app.json`の`version`が同じ間は同じランタイムとみなされ、updateが届く。ネイティブ変更をしたら`version`を上げる運用が前提）
+- ビルドプロファイルと同名の`channel`が対応（上表参照）。`preview`ビルドには`preview`チャンネルのupdateが、`production`ビルドには`production`チャンネルのupdateが届く
+
+**配信コマンド**:
+```
+cd CardHub/apps/mobile
+eas update --branch <development|preview|production> --platform ios --message "<変更内容>" --non-interactive
+```
+
+配信後、対象デバイスでアプリを**完全に終了して再起動**すると反映される（起動時にチェックしにいく仕組みのため、起動中の裏側では自動反映されない）。
 
 ---
 
