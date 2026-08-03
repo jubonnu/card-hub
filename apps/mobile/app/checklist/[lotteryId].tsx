@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { BackIcon, CheckCircleIcon, PlusIcon } from '@/components/icons';
+import { BackIcon, CheckCircleIcon, PencilIcon, PlusIcon } from '@/components/icons';
+import { ChecklistStepNameModal } from '@/components/ChecklistStepNameModal';
 import { ProductThumb } from '@/components/ProductThumb';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { useChecklistStore } from '@/stores/checklistStore';
@@ -11,13 +12,16 @@ import { useTheme } from '@/theme/useTheme';
 import { getDisplayProductName, getDisplayShopName } from '@/utils/publicLotteryDisplay';
 import { formatDateTimeShort } from '@/utils/time';
 
+type NameModalState = { mode: 'add' } | { mode: 'rename'; stepId: string; currentLabel: string } | null;
+
 export default function ChecklistScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { lotteryId } = useLocalSearchParams<{ lotteryId: string }>();
   const saved = useMyLotteriesStore((s) => s.getSaved(Number(lotteryId)));
-  const { groups, toggleStep, addStep, ensureInitialized } = useChecklistStore();
+  const { groups, toggleStep, addStep, renameStep, ensureInitialized } = useChecklistStore();
   const steps = groups[lotteryId as string] ?? [];
+  const [nameModal, setNameModal] = useState<NameModalState>(null);
 
   useEffect(() => {
     if (lotteryId) ensureInitialized(lotteryId);
@@ -104,6 +108,13 @@ export default function ChecklistScreen() {
                   <Text style={[styles.stepSub, { color: theme.colors.textTertiary }]}>{step.description}</Text>
                 ) : null}
               </View>
+              <Pressable
+                hitSlop={8}
+                style={styles.stepEditButton}
+                onPress={() => setNameModal({ mode: 'rename', stepId: step.id, currentLabel: step.label })}
+              >
+                <PencilIcon size={16} color={theme.colors.textFaint} />
+              </Pressable>
             </Pressable>
           ))}
         </View>
@@ -111,13 +122,29 @@ export default function ChecklistScreen() {
         <View style={styles.addStepWrap}>
           <Pressable
             style={[styles.addStepButton, { borderColor: theme.colors.green }]}
-            onPress={() => addStep(lotteryId as string, '新しいチェック項目')}
+            onPress={() => setNameModal({ mode: 'add' })}
           >
             <PlusIcon />
             <Text style={[styles.addStepLabel, { color: theme.colors.green }]}>チェック項目を追加</Text>
           </Pressable>
         </View>
       </ScrollView>
+
+      <ChecklistStepNameModal
+        visible={nameModal !== null}
+        title={nameModal?.mode === 'rename' ? 'チェック項目の名前を編集' : 'チェック項目を追加'}
+        confirmLabel={nameModal?.mode === 'rename' ? '保存' : '追加'}
+        initialValue={nameModal?.mode === 'rename' ? nameModal.currentLabel : ''}
+        onClose={() => setNameModal(null)}
+        onConfirm={(value) => {
+          if (!lotteryId) return;
+          if (nameModal?.mode === 'rename') {
+            renameStep(lotteryId, nameModal.stepId, value);
+          } else {
+            addStep(lotteryId, value);
+          }
+        }}
+      />
     </ScreenContainer>
   );
 }
@@ -228,6 +255,13 @@ const styles = StyleSheet.create({
   },
   stepSub: {
     fontSize: 11,
+  },
+  stepEditButton: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
   addStepWrap: {
     padding: 20,

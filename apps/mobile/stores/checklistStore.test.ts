@@ -80,4 +80,49 @@ describe('checklistStore', () => {
     expect(op.status).toBe('conflict');
     expect(op.lastError).toBe('競合しています');
   });
+
+  describe('renameStep', () => {
+    it('labelだけ更新し、done/sortOrder等の他の値は変わらない', () => {
+      useChecklistStore.getState().ensureInitialized('1');
+      useChecklistStore.getState().toggleStep('1', 'default-0'); // done: trueにしておく
+
+      useChecklistStore.getState().renameStep('1', 'default-0', '新しい名前');
+
+      const step = useChecklistStore.getState().getSteps('1').find((s) => s.id === 'default-0');
+      expect(step?.label).toBe('新しい名前');
+      expect(step?.done).toBe(true);
+      expect(step?.sortOrder).toBe(0);
+    });
+
+    it('guestではキューへenqueueしない', () => {
+      useChecklistStore.getState().ensureInitialized('1');
+      global.fetch = vi.fn();
+
+      useChecklistStore.getState().renameStep('1', 'default-0', '新しい名前');
+
+      expect(useOfflineQueueStore.getState().operations).toHaveLength(0);
+    });
+
+    it('signedIn状態で成功するとserverVersionが反映される', async () => {
+      signInAsUserA();
+      useChecklistStore.getState().ensureInitialized('1');
+      global.fetch = vi.fn().mockResolvedValue(
+        jsonResponse(200, {
+          results: [
+            { stepId: 'default-0', ok: true, label: '新しい名前', done: false, completedAt: null, completedNote: null, sortOrder: 0, serverVersion: 1, clientActionAt: null, isDefault: true },
+          ],
+        })
+      );
+
+      useChecklistStore.getState().renameStep('1', 'default-0', '新しい名前');
+      expect(useOfflineQueueStore.getState().operations).toHaveLength(1);
+
+      await processQueue();
+
+      expect(useOfflineQueueStore.getState().operations).toHaveLength(0);
+      const step = useChecklistStore.getState().getSteps('1').find((s) => s.id === 'default-0');
+      expect(step?.label).toBe('新しい名前');
+      expect(step?.serverVersion).toBe(1);
+    });
+  });
 });

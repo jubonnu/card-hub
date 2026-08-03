@@ -23,6 +23,7 @@ interface ChecklistState {
   groups: Record<string, ChecklistStep[]>;
   toggleStep: (lotteryId: string, stepId: string) => void;
   addStep: (lotteryId: string, label: string) => void;
+  renameStep: (lotteryId: string, stepId: string, label: string) => void;
   getSteps: (lotteryId: string) => ChecklistStep[];
   ensureInitialized: (lotteryId: string) => void;
   /** bootstrap・差分同期からサーバーの正規状態を反映する（G3-3）。 */
@@ -103,6 +104,22 @@ export const useChecklistStore = create<ChecklistState>()(
         });
         void markGuestDataChanged();
         enqueueStepPut(lotteryId, newStep);
+      },
+      renameStep: (lotteryId, stepId, label) => {
+        if (isNamespaceSwitching()) return;
+        let updatedStep: ChecklistStep | undefined;
+        set((state) => {
+          const steps = state.groups[lotteryId] ?? [];
+          const updated = steps.map((step) => {
+            if (step.id !== stepId) return step;
+            const next: ChecklistStep = { ...step, label };
+            updatedStep = next;
+            return next;
+          });
+          return { groups: { ...state.groups, [lotteryId]: updated } };
+        });
+        void markGuestDataChanged();
+        if (updatedStep) enqueueStepPut(lotteryId, updatedStep);
       },
       getSteps: (lotteryId) => get().groups[lotteryId] ?? [],
       ensureInitialized: (lotteryId) => {

@@ -145,6 +145,14 @@ export function PlusIcon({ size = 17, color = '#0A8F4D', strokeWidth = 2.4 }: Ic
   );
 }
 
+export function PencilIcon({ size = 16, color = defaults.color, strokeWidth = 1.9 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </Svg>
+  );
+}
+
 export function WarningIcon({ size = 19, color = '#A66A00', strokeWidth = 2 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round">
