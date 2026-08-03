@@ -86,6 +86,18 @@ describe('derivePublicTimelineStatus', () => {
     const r = makeRecord({ id: 1, applicationEndAt: '2026-07-01T00:00:00.000Z' });
     expect(derivePublicTimelineStatus(r, NOW_ISO)).toBe('ended');
   });
+
+  it('日付のみの締切は、日本時間の午前9時（UTC0時）ではまだacceptingのまま', () => {
+    // application_end_dateのみ="2026-08-03"（NOW_ISOと同じ日）の場合、
+    // new Date('2026-08-03')を直接使うとUTC0時=JST9時で終了扱いになってしまうバグを防ぐ確認。
+    const r = makeRecord({ id: 1, applicationEndDate: '2026-08-03' });
+    expect(derivePublicTimelineStatus(r, NOW_ISO)).toBe('accepting'); // NOW_ISO = 2026-08-03T00:00:00Z = JST9:00
+  });
+
+  it('日付のみの締切は、日本時間の翌日0時（UTC15時）でendedになる', () => {
+    const r = makeRecord({ id: 1, applicationEndDate: '2026-08-03' });
+    expect(derivePublicTimelineStatus(r, '2026-08-03T15:00:00.000Z')).toBe('ended');
+  });
 });
 
 describe('compareLotteriesByTimeline', () => {
@@ -98,17 +110,17 @@ describe('compareLotteriesByTimeline', () => {
     expect(sorted.map((r) => r.id)).toEqual([2, 1]); // 受付中(2)が先、終了済み(1)は後ろ
   });
 
-  it('優先度: accepting > resultPending > unknown > ended', () => {
+  it('優先度: accepting > resultPending > ended > unknown', () => {
     const accepting = makeRecord({ id: 1, applicationEndAt: '2026-08-20T00:00:00.000Z' });
     const resultPending = makeRecord({
       id: 2,
       applicationEndAt: '2026-08-01T00:00:00.000Z',
       resultAnnouncementAt: '2026-08-10T00:00:00.000Z',
     });
-    const unknown = makeRecord({ id: 3 });
-    const ended = makeRecord({ id: 4, applicationEndAt: '2026-07-01T00:00:00.000Z' });
+    const ended = makeRecord({ id: 3, applicationEndAt: '2026-07-01T00:00:00.000Z' });
+    const unknown = makeRecord({ id: 4 });
 
-    const sorted = [ended, unknown, resultPending, accepting].sort((a, b) => compareLotteriesByTimeline(a, b, NOW_ISO));
+    const sorted = [unknown, ended, resultPending, accepting].sort((a, b) => compareLotteriesByTimeline(a, b, NOW_ISO));
 
     expect(sorted.map((r) => r.id)).toEqual([1, 2, 3, 4]);
   });

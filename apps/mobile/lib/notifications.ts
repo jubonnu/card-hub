@@ -3,6 +3,7 @@ import * as Notifications from 'expo-notifications';
 import type { LotteryRecord } from '@/schemas/lotteryApi';
 import type { Lottery, NotificationToggleSettings } from '@/types/models';
 import { getDisplayProductName, getDisplayShopName } from '@/utils/publicLotteryDisplay';
+import { normalizeDeadline } from '@/utils/time';
 
 /**
  * ローカル通知のみを扱う（Expo Go対応範囲）。リモートPush送信は対象外
@@ -129,8 +130,8 @@ export async function scheduleApiLotteryReminders(
 
   const productName = getDisplayProductName(record);
   const shopName = getDisplayShopName(record);
-  const deadline = record.applicationEndAt ?? record.applicationEndDate;
-  const announce = record.resultAnnouncementAt ?? record.resultAnnouncementDate;
+  const deadline = normalizeDeadline(record.applicationEndAt, record.applicationEndDate);
+  const announce = normalizeDeadline(record.resultAnnouncementAt, record.resultAnnouncementDate);
   const purchase = record.purchaseDeadlineAt;
 
   const jobs: ApiReminderJob[] = [];

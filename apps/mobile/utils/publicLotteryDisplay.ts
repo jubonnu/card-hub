@@ -1,5 +1,5 @@
 import type { LotteryRecord } from '@/schemas/lotteryApi';
-import { formatDateTimeShort, formatRemaining, isPast } from '@/utils/time';
+import { formatDateTimeShort, formatRemaining, isPast, normalizeDeadline } from '@/utils/time';
 
 /**
  * 実API（GET /lotteries）が返す抽選レコードは、Phase-Aのモック `LotteryStatus`
@@ -12,12 +12,12 @@ import { formatDateTimeShort, formatRemaining, isPast } from '@/utils/time';
 export type PublicTimelineStatus = 'accepting' | 'resultPending' | 'ended' | 'unknown';
 
 export function derivePublicTimelineStatus(record: LotteryRecord, nowIso: string): PublicTimelineStatus {
-  const deadline = record.applicationEndAt ?? record.applicationEndDate;
+  const deadline = normalizeDeadline(record.applicationEndAt, record.applicationEndDate);
   if (!deadline) return 'unknown';
 
   if (!isPast(deadline, nowIso)) return 'accepting';
 
-  const announcement = record.resultAnnouncementAt ?? record.resultAnnouncementDate;
+  const announcement = normalizeDeadline(record.resultAnnouncementAt, record.resultAnnouncementDate);
   if (announcement && !isPast(announcement, nowIso)) return 'resultPending';
 
   return 'ended';
@@ -29,7 +29,8 @@ export function derivePublicTimelineStatus(record: LotteryRecord, nowIso: string
  * 一覧の先頭に来てしまう不具合があった。ステータスの優先度を最初に比較し、
  * 同一ステータス内でのみ日時で比較する。
  *
- * 優先度: 受付中 → 結果待ち → 詳細未定（日時不明） → 受付終了
+ * 優先度: 受付中 → 結果待ち → 受付終了 → 詳細未定（日時不明）
+ * （サーバー側`repositories/lotteryRepository.ts`のORDER BYと統一する順序）
  * - 受付中: 締切が近い順（昇順）
  * - 結果待ち: 結果発表日が近い順（昇順）
  * - 受付終了: 終了日時が新しい順（降順。結果発表日があればそれを、無ければ締切日を終了日時とみなす）
@@ -46,16 +47,16 @@ function timelineStatusPriority(status: PublicTimelineStatus): number {
       return 0;
     case 'resultPending':
       return 1;
-    case 'unknown':
-      return 2;
     case 'ended':
+      return 2;
+    case 'unknown':
       return 3;
   }
 }
 
 function timelineSortTimestamp(record: LotteryRecord, status: PublicTimelineStatus): number {
-  const deadline = record.applicationEndAt ?? record.applicationEndDate;
-  const announcement = record.resultAnnouncementAt ?? record.resultAnnouncementDate;
+  const deadline = normalizeDeadline(record.applicationEndAt, record.applicationEndDate);
+  const announcement = normalizeDeadline(record.resultAnnouncementAt, record.resultAnnouncementDate);
 
   if (status === 'accepting') {
     return deadline ? new Date(deadline).getTime() : Number.POSITIVE_INFINITY;
@@ -96,7 +97,7 @@ export function getDisplayShopName(record: LotteryRecord): string {
 
 export function getHeaderMetaLine(record: LotteryRecord, nowIso: string): string {
   const status = derivePublicTimelineStatus(record, nowIso);
-  const deadline = record.applicationEndAt ?? record.applicationEndDate;
+  const deadline = normalizeDeadline(record.applicationEndAt, record.applicationEndDate);
 
   if (status === 'accepting' && deadline) return formatRemaining(deadline, nowIso);
   if (status === 'ended') return '受付終了';

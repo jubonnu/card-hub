@@ -22,7 +22,7 @@ import { useMyLotteriesStore } from '@/stores/myLotteriesStore';
 import { useNotificationSettingsStore } from '@/stores/notificationSettingsStore';
 import { useTheme } from '@/theme/useTheme';
 import type { Lottery } from '@/types/models';
-import { formatDateTimeShort, formatRemaining, isPast } from '@/utils/time';
+import { formatDateTimeShort, formatRemaining, isPast, normalizeDeadline } from '@/utils/time';
 import {
   derivePublicTimelineStatus,
   getDisplayProductName,
@@ -73,8 +73,9 @@ function ApiLotteryDetailBody({ record, nowIso }: { record: LotteryRecord; nowIs
   const notificationSettings = useNotificationSettingsStore();
   const status = derivePublicTimelineStatus(record, nowIso);
   const caution = needsVerificationCaution(record);
-  const deadline = record.applicationEndAt ?? record.applicationEndDate;
-  const announce = record.resultAnnouncementAt ?? record.resultAnnouncementDate;
+  // isPast判定・カウントダウン・カレンダー登録に使う正規化済みの値（日付のみの場合はJST終端に補正）。
+  const deadline = normalizeDeadline(record.applicationEndAt, record.applicationEndDate);
+  const announce = normalizeDeadline(record.resultAnnouncementAt, record.resultAnnouncementDate);
   const url = record.resolvedApplicationUrl ?? record.applicationUrl;
   const hasAnyDate = Boolean(deadline || announce || record.purchaseDeadlineAt);
   const productName = getDisplayProductName(record);
@@ -165,7 +166,11 @@ function ApiLotteryDetailBody({ record, nowIso }: { record: LotteryRecord; nowIs
           <InfoRow
             dotColor={theme.colors.event.deadline.color}
             label="応募締切"
-            value={deadline ? formatDateTimeShort(deadline) : '未公開'}
+            value={
+              record.applicationEndAt || record.applicationEndDate
+                ? formatDateTimeShort((record.applicationEndAt ?? record.applicationEndDate) as string)
+                : '未公開'
+            }
           />
           <InfoRow
             dotColor={theme.colors.event.announcement.color}

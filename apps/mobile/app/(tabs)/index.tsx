@@ -12,7 +12,7 @@ import { fetchLotteries } from '@/lib/apiClient';
 import { useMyLotteriesStore } from '@/stores/myLotteriesStore';
 import { useTheme } from '@/theme/useTheme';
 import { derivePublicTimelineStatus, getDisplayProductName, getDisplayShopName } from '@/utils/publicLotteryDisplay';
-import { formatRelativeMinutes, isPast } from '@/utils/time';
+import { formatRelativeMinutes, isPast, normalizeDeadline } from '@/utils/time';
 
 const NEW_ARRIVALS_FETCH_LIMIT = 20;
 const NEW_ARRIVALS_DISPLAY_COUNT = 3;
@@ -41,15 +41,19 @@ export default function HomeScreen() {
     return saved
       .map((s) => s.record)
       .filter((record) => {
-        const deadline = record.applicationEndAt ?? record.applicationEndDate;
-        const announce = record.resultAnnouncementAt ?? record.resultAnnouncementDate;
+        const deadline = normalizeDeadline(record.applicationEndAt, record.applicationEndDate);
+        const announce = normalizeDeadline(record.resultAnnouncementAt, record.resultAnnouncementDate);
         const purchase = record.purchaseDeadlineAt;
         const upcoming = [deadline, announce, purchase].filter((d): d is string => Boolean(d) && !isPast(d as string, nowIso));
         return upcoming.length > 0;
       })
       .sort((a, b) => {
         const nextDate = (r: typeof a) => {
-          const dates = [r.applicationEndAt ?? r.applicationEndDate, r.resultAnnouncementAt ?? r.resultAnnouncementDate, r.purchaseDeadlineAt]
+          const dates = [
+            normalizeDeadline(r.applicationEndAt, r.applicationEndDate),
+            normalizeDeadline(r.resultAnnouncementAt, r.resultAnnouncementDate),
+            r.purchaseDeadlineAt,
+          ]
             .filter((d): d is string => Boolean(d) && !isPast(d as string, nowIso))
             .map((d) => new Date(d).getTime());
           return Math.min(...dates);

@@ -17,7 +17,7 @@ import { useFavoritesStore } from '@/stores/favoritesStore';
 import { useTheme } from '@/theme/useTheme';
 import { derivePublicTimelineStatus, getDisplayShopName, needsVerificationCaution } from '@/utils/publicLotteryDisplay';
 import { getCardTypeLabel, groupLotteriesByProduct, type PublicProductGroup } from '@/utils/publicProductDisplay';
-import { formatDateTimeShort } from '@/utils/time';
+import { formatDateTimeShort, normalizeDeadline } from '@/utils/time';
 
 // 「概要」「更新履歴」は未実装のため、公開版では「店舗一覧」のみ表示する
 // （未完成タブをユーザーに見せないため、タブ切り替えUI自体を出さない）。
@@ -89,7 +89,7 @@ function ApiProductBody({ group, nowIso }: { group: PublicProductGroup; nowIso: 
   const following = isFollowingProduct(group.key);
   const sortedRecords = useMemo(() => {
     const deadlineKey = (r: LotteryRecord) => {
-      const d = r.applicationEndAt ?? r.applicationEndDate;
+      const d = normalizeDeadline(r.applicationEndAt, r.applicationEndDate);
       return d ? new Date(d).getTime() : Number.POSITIVE_INFINITY;
     };
     return [...group.records].sort((a, b) => deadlineKey(a) - deadlineKey(b));
