@@ -238,8 +238,8 @@ function LoadMoreFooter({
   if (!hasMore) return null;
 
   return (
-    <View style={styles.loadMoreWrap}>
-      <SecondaryButton label="もっと見る" size="md" onPress={onLoadMore} />
+    <View style={[styles.loadMoreWrap, styles.loadMoreButtonWrap]}>
+      <SecondaryButton label="もっと見る" size="lg" onPress={onLoadMore} />
     </View>
   );
 }
@@ -328,6 +328,10 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
     alignItems: 'center',
     gap: 10,
+  },
+  loadMoreButtonWrap: {
+    alignItems: 'stretch',
+    paddingHorizontal: 4,
   },
   loadMoreErrorText: {
     fontSize: 12,
