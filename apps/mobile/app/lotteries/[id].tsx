@@ -137,7 +137,7 @@ function ApiLotteryDetailBody({ record, nowIso }: { record: LotteryRecord; nowIs
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.topRow}>
           <View style={styles.topRowLeft}>
-            <PublicStatusBadge status={status} size="md" />
+            <PublicStatusBadge status={status} />
             {caution ? <VerificationCautionBadge /> : null}
           </View>
           {status === 'accepting' && deadline ? (

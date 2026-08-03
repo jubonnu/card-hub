@@ -3,9 +3,21 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '@/theme/useTheme';
 import type { PublicTimelineStatus } from '@/utils/publicLotteryDisplay';
 
+type BadgeSize = 'sm' | 'md';
+
+/**
+ * `PublicStatusBadge`と`VerificationCautionBadge`が共通で使う寸法テーブル。
+ * 2箇所に同じ数値を別々に書くと片方だけ変更されてサイズがずれる不具合を起こすため
+ * （実際に「要確認」だけ小さいままになっていた）、必ずここを両者から参照する。
+ */
+const BADGE_DIMENSIONS: Record<BadgeSize, { paddingVertical: number; paddingHorizontal: number; fontSize: number }> = {
+  sm: { paddingVertical: 4, paddingHorizontal: 10, fontSize: 11 },
+  md: { paddingVertical: 5, paddingHorizontal: 12, fontSize: 12 },
+};
+
 interface PublicStatusBadgeProps {
   status: PublicTimelineStatus;
-  size?: 'sm' | 'md';
+  size?: BadgeSize;
 }
 
 /**
@@ -15,6 +27,7 @@ interface PublicStatusBadgeProps {
  */
 export function PublicStatusBadge({ status, size = 'sm' }: PublicStatusBadgeProps) {
   const theme = useTheme();
+  const dim = BADGE_DIMENSIONS[size];
 
   const style =
     status === 'accepting'
@@ -29,26 +42,35 @@ export function PublicStatusBadge({ status, size = 'sm' }: PublicStatusBadgeProp
     <View
       style={[
         styles.badge,
-        {
-          backgroundColor: style.bg,
-          paddingVertical: size === 'md' ? 5 : 4,
-          paddingHorizontal: size === 'md' ? 12 : 10,
-        },
+        { backgroundColor: style.bg, paddingVertical: dim.paddingVertical, paddingHorizontal: dim.paddingHorizontal },
       ]}
     >
-      <Text style={[styles.text, { color: style.fg, fontSize: size === 'md' ? 12 : 11 }]}>{style.label}</Text>
+      <Text style={[styles.text, { color: style.fg, fontSize: dim.fontSize }]}>{style.label}</Text>
     </View>
   );
 }
 
-/** verificationStatus が未承認（extracted等）のレコードに付ける小さな注意チップ。 */
-export function VerificationCautionBadge() {
+interface VerificationCautionBadgeProps {
+  size?: BadgeSize;
+}
+
+/**
+ * verificationStatus が未承認（extracted等）のレコードに付ける注意チップ。
+ * 隣に並ぶ`PublicStatusBadge`と常に同じ寸法になるよう`BADGE_DIMENSIONS`を共有する。
+ */
+export function VerificationCautionBadge({ size = 'sm' }: VerificationCautionBadgeProps) {
   const theme = useTheme();
   const style = theme.colors.status.needsCheck;
+  const dim = BADGE_DIMENSIONS[size];
 
   return (
-    <View style={[styles.badge, styles.captionBadge, { backgroundColor: style.bg }]}>
-      <Text style={[styles.text, styles.captionText, { color: style.fg }]}>要確認</Text>
+    <View
+      style={[
+        styles.badge,
+        { backgroundColor: style.bg, paddingVertical: dim.paddingVertical, paddingHorizontal: dim.paddingHorizontal },
+      ]}
+    >
+      <Text style={[styles.text, { color: style.fg, fontSize: dim.fontSize }]}>要確認</Text>
     </View>
   );
 }
@@ -60,12 +82,5 @@ const styles = StyleSheet.create({
   },
   text: {
     fontWeight: '700',
-  },
-  captionBadge: {
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-  },
-  captionText: {
-    fontSize: 10,
   },
 });
