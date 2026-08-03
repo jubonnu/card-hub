@@ -7,7 +7,6 @@ import {
   BackupIcon,
   ChevronRightIcon,
   ClockIcon,
-  GearIcon,
   HeartIcon,
   PersonIcon,
 } from '@/components/icons';
@@ -161,13 +160,6 @@ export default function ProfileScreen() {
                 </Text>
               )}
             </View>
-            <Pressable
-              hitSlop={8}
-              style={styles.iconButton}
-              onPress={() => Alert.alert('準備中です', 'アカウント設定は今後実装予定です')}
-            >
-              <GearIcon color={theme.colors.textPrimary} />
-            </Pressable>
           </View>
         ) : (
           <View style={styles.signInPrompt}>
@@ -340,12 +332,6 @@ const styles = StyleSheet.create({
   },
   userId: {
     fontSize: 12,
-  },
-  iconButton: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   statsWrap: {
     paddingHorizontal: 20,
