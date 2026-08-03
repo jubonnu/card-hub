@@ -4,12 +4,12 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { useRouter } from 'expo-router';
 
 import {
-  BackupIcon,
   ChevronRightIcon,
   ClockIcon,
   HeartIcon,
   PersonIcon,
 } from '@/components/icons';
+import { DataSyncStatusBanner } from '@/components/DataSyncStatusBanner';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { SyncConflictBanner } from '@/components/auth/SyncConflictBanner';
@@ -26,7 +26,9 @@ import { useTheme } from '@/theme/useTheme';
 /**
  * 今月の実績はMobile-G6で実データ化。無料ユーザーには保存件数（実件数）のみ開放し、
  * 応募数・当選数・当選率はpremium加入者にのみ表示する（9・11章の無料/premium境界）。
- * データのバックアップは未実装のため引き続き準備中扱い。
+ * 独立した「データのバックアップ」機能（手動エクスポート・復元）は仕様が無いため実装しない
+ * （サインイン済みは自動同期、ゲストはApple Sign-Inでの同期が唯一のデータ保護手段。
+ * 詳細は`DataSyncStatusBanner`のコメントを参照）。
  *
  * アカウント（プロフィール表示・ログアウト・アカウント削除、G3-2）は`authStore`の実データを使う。
  */
@@ -164,14 +166,13 @@ export default function ProfileScreen() {
         ) : (
           <View style={styles.signInPrompt}>
             <Text style={[styles.userName, { color: theme.colors.textPrimary }]}>サインインしていません</Text>
-            <Text style={[styles.userId, { color: theme.colors.textTertiary }]}>
-              サインインすると端末をまたいでデータを同期できます
-            </Text>
             {/* .expo/types/router.d.ts はローカル生成物で(auth)/sign-in追加前のキャッシュのため型が古い。
                 `expo start`実行時に再生成されれば通常のリテラルで型が通るようになる。 */}
             <PrimaryButton label="サインイン" size="md" onPress={() => router.push('/sign-in' as Parameters<typeof router.push>[0])} />
           </View>
         )}
+
+        <DataSyncStatusBanner />
 
         <View style={styles.statsWrap}>
           <Pressable
@@ -207,11 +208,6 @@ export default function ProfileScreen() {
             icon={<ClockIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
             label="通知設定"
             onPress={() => router.push('/notification-settings/global')}
-          />
-          <MenuRow
-            icon={<BackupIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
-            label="データのバックアップ"
-            onPress={() => Alert.alert('準備中です', 'データのバックアップ機能は今後実装予定です')}
           />
           <MenuRow
             icon={<HeartIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
