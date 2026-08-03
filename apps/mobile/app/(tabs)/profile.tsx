@@ -33,7 +33,7 @@ import { useTheme } from '@/theme/useTheme';
 export default function ProfileScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const { favoriteLotteryIds, followedProductKeys } = useFavoritesStore();
+  const { followedProductKeys } = useFavoritesStore();
   const { status, user } = useAuthStore();
   const { saved } = useMyLotteriesStore();
   const billing = useBillingStore();
@@ -196,12 +196,6 @@ export default function ProfileScreen() {
             icon={<ClockIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
             label="自分の抽選"
             onPress={() => router.push('/my-lotteries')}
-          />
-          <MenuRow
-            icon={<HeartIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
-            label="お気に入り"
-            trailingText={`抽選 ${favoriteLotteryIds.length}`}
-            onPress={() => router.push('/favorites')}
           />
           <MenuRow
             icon={<PersonIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
