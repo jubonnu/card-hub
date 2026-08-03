@@ -122,6 +122,8 @@ export interface AppleSignInParams {
   rawNonce?: string;
   deviceId: string;
   deviceName?: string;
+  /** Appleが初回認可時にのみ返すfullName（Mobile-G4 Hardening）。サーバーはdisplayName未設定時のみ保存する。 */
+  fullName?: string;
 }
 
 export async function appleSignIn(params: AppleSignInParams): Promise<AuthLoginResponse> {

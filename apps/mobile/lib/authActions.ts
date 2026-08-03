@@ -91,17 +91,20 @@ export async function signInWithApple(): Promise<void> {
 
     const deviceId = await getOrCreateDeviceId();
 
+    // Appleのfull nameは初回認可時のみ返る。取得できた場合のみサーバーへ送り、
+    // `users.displayName`未設定の場合に限りサーバー側で永続化される（Mobile-G4 Hardening）。
+    // ローカルキャッシュにも渡す（渡さない場合は`toAuthUser`が既存キャッシュを保持する）。
+    const appleDisplayName = buildAppleDisplayName(credential.fullName);
+
     const loginResult = await appleSignIn({
       identityToken: credential.identityToken,
       authorizationCode: credential.authorizationCode,
       rawNonce,
       deviceId,
+      fullName: appleDisplayName ?? undefined,
     });
 
     await saveRefreshToken(loginResult.refreshToken, deviceId);
-    // Appleのfull nameは初回認可時のみ返る。取得できた場合のみキャッシュへ渡す
-    // （渡さない場合は`toAuthUser`が既存キャッシュを保持する)。
-    const appleDisplayName = buildAppleDisplayName(credential.fullName);
     useAuthStore.getState().setSignedIn({
       user: toAuthUser(loginResult.user, { cachedAppleDisplayName: appleDisplayName }),
       accessToken: loginResult.accessToken,
