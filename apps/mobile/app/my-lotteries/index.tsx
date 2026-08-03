@@ -11,7 +11,7 @@ import { isCorrectionTransition, nextLotteryStatusOptions } from '@/lib/lotteryS
 import { useMyLotteriesStore, type SavedLottery } from '@/stores/myLotteriesStore';
 import type { PersonalLotteryStatus } from '@/theme/colors';
 import { useTheme } from '@/theme/useTheme';
-import { derivePublicTimelineStatus } from '@/utils/publicLotteryDisplay';
+import { compareLotteriesByTimeline, derivePublicTimelineStatus } from '@/utils/publicLotteryDisplay';
 
 const PERSONAL_STATUS_LABEL: Record<PersonalLotteryStatus, string> = {
   unknown: '未設定',
@@ -32,11 +32,6 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]['key'];
 
-function deadlineSortKey(record: { applicationEndAt: string | null; applicationEndDate: string | null }): number {
-  const deadline = record.applicationEndAt ?? record.applicationEndDate;
-  return deadline ? new Date(deadline).getTime() : Number.POSITIVE_INFINITY;
-}
-
 export default function MyLotteriesScreen() {
   const theme = useTheme();
   const router = useRouter();
@@ -46,7 +41,7 @@ export default function MyLotteriesScreen() {
 
   const filtered = useMemo(() => {
     const byTab = tab === 'all' ? saved : saved.filter((s) => derivePublicTimelineStatus(s.record, nowIso) === tab);
-    return [...byTab].sort((a, b) => deadlineSortKey(a.record) - deadlineSortKey(b.record));
+    return [...byTab].sort((a, b) => compareLotteriesByTimeline(a.record, b.record, nowIso));
   }, [saved, tab, nowIso]);
 
   const openStatusSheet = (item: SavedLottery) => {

@@ -11,11 +11,10 @@ import { SecondaryButton } from '@/components/SecondaryButton';
 import { SkeletonCard } from '@/components/SkeletonCard';
 import { LOTTERIES_PAGE_SIZE, usePaginatedLotteries } from '@/hooks/usePaginatedLotteries';
 import { getApiErrorCopy } from '@/lib/apiClient';
-import type { LotteryRecord } from '@/schemas/lotteryApi';
 import { useFilterStore, type LotteryStatusTab } from '@/stores/filterStore';
 import { useMyLotteriesStore } from '@/stores/myLotteriesStore';
 import { useTheme } from '@/theme/useTheme';
-import { derivePublicTimelineStatus, getDisplayProductName, getDisplayShopName } from '@/utils/publicLotteryDisplay';
+import { compareLotteriesByTimeline, derivePublicTimelineStatus, getDisplayProductName, getDisplayShopName } from '@/utils/publicLotteryDisplay';
 
 const TABS: { key: LotteryStatusTab; label: string }[] = [
   { key: 'all', label: 'すべて' },
@@ -23,11 +22,6 @@ const TABS: { key: LotteryStatusTab; label: string }[] = [
   { key: 'resultPending', label: '結果待ち' },
   { key: 'ended', label: '受付終了' },
 ];
-
-function deadlineSortKey(record: LotteryRecord): number {
-  const deadline = record.applicationEndAt ?? record.applicationEndDate;
-  return deadline ? new Date(deadline).getTime() : Number.POSITIVE_INFINITY;
-}
 
 export default function LotteriesScreen() {
   const theme = useTheme();
@@ -50,7 +44,7 @@ export default function LotteriesScreen() {
     if (statusTab !== 'all') {
       list = list.filter((r) => derivePublicTimelineStatus(r, nowIso) === statusTab);
     }
-    return [...list].sort((a, b) => deadlineSortKey(a) - deadlineSortKey(b));
+    return [...list].sort((a, b) => compareLotteriesByTimeline(a, b, nowIso));
   }, [saved, searchQuery, statusTab, nowIso]);
 
   const filteredAll = useMemo(() => {
@@ -64,7 +58,7 @@ export default function LotteriesScreen() {
     if (statusTab !== 'all') {
       list = list.filter((r) => derivePublicTimelineStatus(r, nowIso) === statusTab);
     }
-    return [...list].sort((a, b) => deadlineSortKey(a) - deadlineSortKey(b));
+    return [...list].sort((a, b) => compareLotteriesByTimeline(a, b, nowIso));
   }, [pageState, searchQuery, statusTab, nowIso]);
 
   const hasMore =
