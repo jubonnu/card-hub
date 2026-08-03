@@ -4,6 +4,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { defaultNotificationSettings } from '@/data/mockData';
 import { createAccountScopedStorage, isNamespaceSwitching, isSyncEligible, registerAccountScopedStore } from '@/lib/accountNamespace';
 import { generateClientRequestId } from '@/lib/clientRequestId';
+import { markGuestDataChanged } from '@/lib/guestRevision';
 import { enqueueOperation } from '@/lib/offlineQueue';
 import { registerQueueResultHandler } from '@/lib/offlineQueueResultRouter';
 import { putNotificationPreferencesResponseSchema } from '@/schemas/syncApi';
@@ -74,11 +75,13 @@ export const useNotificationSettingsStore = create<NotificationSettingsState>()(
       setToggle: (key, value) => {
         if (isNamespaceSwitching()) return;
         set({ [key]: value } as Partial<NotificationSettingsState>);
+        void markGuestDataChanged();
         enqueuePut(get());
       },
       setHours: (key, value) => {
         if (isNamespaceSwitching()) return;
         set({ [key]: value } as Partial<NotificationSettingsState>);
+        void markGuestDataChanged();
         enqueuePut(get());
       },
       applyServerState: (state) => set(state),

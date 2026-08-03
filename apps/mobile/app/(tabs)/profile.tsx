@@ -39,15 +39,24 @@ export default function ProfileScreen() {
 
   const isSignedIn = status === 'signedIn' && user != null;
 
-  const handleSignOut = async () => {
-    setPendingAction('signOut');
-    try {
-      await signOut();
-    } catch {
-      Alert.alert('ログアウトできませんでした', 'もう一度お試しください');
-    } finally {
-      setPendingAction(null);
-    }
+  const handleSignOut = () => {
+    Alert.alert('ログアウトしますか？', '', [
+      { text: 'キャンセル', style: 'cancel' },
+      {
+        text: 'ログアウト',
+        style: 'destructive',
+        onPress: async () => {
+          setPendingAction('signOut');
+          try {
+            await signOut();
+          } catch {
+            Alert.alert('ログアウトできませんでした', 'もう一度お試しください');
+          } finally {
+            setPendingAction(null);
+          }
+        },
+      },
+    ]);
   };
 
   const handleSignOutAllDevices = () => {

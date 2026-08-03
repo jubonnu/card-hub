@@ -3,6 +3,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { createAccountScopedStorage, isNamespaceSwitching, isSyncEligible, registerAccountScopedStore } from '@/lib/accountNamespace';
 import { generateClientRequestId } from '@/lib/clientRequestId';
+import { markGuestDataChanged } from '@/lib/guestRevision';
 import { enqueueOperation } from '@/lib/offlineQueue';
 import type { FavoriteRow, FollowedProductRow } from '@/schemas/syncApi';
 
@@ -48,6 +49,7 @@ export const useFavoritesStore = create<FavoritesState>()(
             ? [...state.favoriteLotteryIds, lotteryId]
             : state.favoriteLotteryIds.filter((id) => id !== lotteryId),
         }));
+        void markGuestDataChanged();
 
         if (!isSyncEligible()) return;
         const numericId = Number(lotteryId);
@@ -69,6 +71,7 @@ export const useFavoritesStore = create<FavoritesState>()(
             ? state.followedProductKeys.filter((key) => key !== productKey)
             : [...state.followedProductKeys, productKey],
         }));
+        void markGuestDataChanged();
         // publicProductIdを解決する手段が現行UIに無いため、サーバー同期は行わない（24-7章）。
       },
       isFavoriteLottery: (lotteryId) => get().favoriteLotteryIds.includes(lotteryId),

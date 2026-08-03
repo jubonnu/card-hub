@@ -10,7 +10,8 @@ export type SyncConflictKind =
   | 'lotteryVersionConflict'
   | 'checklistVersionConflict'
   | 'notificationPreferencesVersionConflict'
-  | 'idempotencyConflict';
+  | 'idempotencyConflict'
+  | 'guestMigrationFailed';
 
 export interface SyncConflictEntry {
   id: string;

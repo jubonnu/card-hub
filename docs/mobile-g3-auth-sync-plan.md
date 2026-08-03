@@ -837,3 +837,27 @@ G3-5の実機/シミュレータ確認では、`node-server.ts`がこのCronを�
 私はその間、各ステップの結果（ログ・エラーメッセージ等）を元に次の手順を案内したり、発生した問題の調査・修正を行います。
 
 進め方（上記の分担でよいか、または他に希望があるか）をご確認ください。
+
+---
+
+# 改訂5（guest差分移行のpending snapshot方式への変更、2026-08-02）
+
+## 28. guest差分移行の再設計（G3-5正式完了前の修正）
+
+実機シミュレーターでの手動確認（27章）を通じて、G4作業中に追加した「guest差分移行」機能（ログアウト後にguestとして行った操作を、再ログイン時にサーバーへ移行する仕組み）に設計上の問題が見つかり、修正した。
+
+**問題**: 初期実装は「移行が成功するまでnamespaceをguestのまま留める」方式だった。これは`authStore.status`が`signedIn`なのにローカルのnamespace境界だけ`guest`のままという不整合を生み、以下のリスクがあった:
+- 認証済み状態での通常syncがguestデータをユーザーのデータとして送ってしまう可能性
+- ログイン後のユーザー操作がguest namespaceへ保存されてしまう可能性
+- RevenueCatログイン処理とnamespace状態が不一致になる
+- UI上はログイン済みなのにローカルデータ境界がguestのまま
+
+**修正方式（pending snapshot方式）**: `lib/bootstrapSync.ts`を変更。
+1. guest payloadを`publicUserId`ごとに不変スナップショットとしてAsyncStorageへ保存する（`batchClientRequestId`も一緒に確定・保存）
+2. account namespaceへ**即座に**切り替える（送信の成否を待たない）
+3. 保存済みsnapshotをサーバーへ送信する（ベストエフォート、失敗しても例外を投げない）
+4. 成功した場合のみsnapshotを削除し`lastMigratedGuestRevision`を更新する
+
+これにより、送信が失敗しても認証・namespace・以降のユーザー操作は常にaccount側で一貫する。pending snapshotは`publicUserId`ごとに独立しているため、pending中に別アカウントへログインしても混線しない（アカウントAのpendingがアカウントBの移行に混入しない、Aへ戻れば元のpendingがそのまま再試行される）。guestデータ自体は引き続き明示的に削除しない。
+
+**テスト結果**: モバイル211 tests（新規11件: 移行失敗時のnamespace即時切替、通常syncへの混入防止、失敗後のユーザー操作がaccount namespaceへ保存されること、pending再試行成功、アプリ強制終了後の再開、namespace切替途中の強制終了からの再開、RevenueCatログイン開始時点でnamespaceがguestでないこと、アカウント間のpending分離3件）、typecheck・lintともにクリーン。バックエンド側の変更は無し（既存の`POST /me/sync/bootstrap`をそのまま再利用）。

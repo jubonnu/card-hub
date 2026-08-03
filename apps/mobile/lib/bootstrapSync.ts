@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { freezeCurrentNamespace, syncNamespaceWithAuthUser } from '@/lib/accountNamespace';
 import { generateClientRequestId } from '@/lib/clientRequestId';
+import { getGuestRevision, getLastMigratedGuestRevision, setLastMigratedGuestRevision } from '@/lib/guestRevision';
 import { postSyncBootstrap } from '@/lib/syncClient';
 import { useSyncConflictsStore } from '@/lib/syncConflicts';
 import type { LotteryRecord } from '@/schemas/lotteryApi';
@@ -34,6 +35,7 @@ import { useNotificationSettingsStore } from '@/stores/notificationSettingsStore
 
 const BOOTSTRAPPED_KEY_PREFIX = 'cardhub.bootstrapped.';
 const BATCH_ID_KEY_PREFIX = 'cardhub.bootstrapBatchId.';
+const DIFF_BATCH_ID_KEY_PREFIX = 'cardhub.guestDiffBatchId.';
 
 async function isBootstrapped(publicUserId: string): Promise<boolean> {
   return (await AsyncStorage.getItem(BOOTSTRAPPED_KEY_PREFIX + publicUserId)) === 'true';
@@ -43,8 +45,9 @@ async function markBootstrapped(publicUserId: string): Promise<void> {
   await AsyncStorage.setItem(BOOTSTRAPPED_KEY_PREFIX + publicUserId, 'true');
 }
 
-async function getOrCreateBatchClientRequestId(publicUserId: string): Promise<string> {
-  const key = BATCH_ID_KEY_PREFIX + publicUserId;
+/** `keyPrefix + publicUserId`をキーに、同じ移行試行の間だけ安定したbatchClientRequestIdを発行する。 */
+async function getOrCreateBatchId(keyPrefix: string, publicUserId: string): Promise<string> {
+  const key = keyPrefix + publicUserId;
   const existing = await AsyncStorage.getItem(key);
   if (existing) return existing;
   const id = generateClientRequestId();
@@ -52,14 +55,12 @@ async function getOrCreateBatchClientRequestId(publicUserId: string): Promise<st
   return id;
 }
 
-async function clearBatchClientRequestId(publicUserId: string): Promise<void> {
-  await AsyncStorage.removeItem(BATCH_ID_KEY_PREFIX + publicUserId);
+async function clearBatchId(keyPrefix: string, publicUserId: string): Promise<void> {
+  await AsyncStorage.removeItem(keyPrefix + publicUserId);
 }
 
-/** guestストアの現在値からbootstrapリクエストを組み立てる（ステップ1・2）。 */
-async function buildBootstrapRequest(publicUserId: string): Promise<SyncBootstrapRequest> {
-  const batchClientRequestId = await getOrCreateBatchClientRequestId(publicUserId); // ステップ3
-
+/** guestストアの現在値からリクエストを組み立てる（初回bootstrap・guest差分移行の両方で使う）。 */
+async function buildSyncRequest(batchClientRequestId: string): Promise<SyncBootstrapRequest> {
   const myLotteries = useMyLotteriesStore.getState().saved;
   const favorites = useFavoritesStore.getState();
   const checklistGroups = useChecklistStore.getState().groups;
@@ -158,8 +159,10 @@ async function applyServerState(response: SyncBootstrapResponse, guestSnapshots:
 let bootstrapInFlight: Promise<void> | null = null;
 
 async function runBootstrapSync(publicUserId: string): Promise<void> {
+  const batchClientRequestId = await getOrCreateBatchId(BATCH_ID_KEY_PREFIX, publicUserId);
+
   const { request, guestSnapshots } = await freezeCurrentNamespace(async () => ({
-    request: await buildBootstrapRequest(publicUserId), // ステップ1・2
+    request: await buildSyncRequest(batchClientRequestId), // ステップ1・2・3
     guestSnapshots: new Map(useMyLotteriesStore.getState().saved.map((s) => [s.record.id, s.record])),
   }));
 
@@ -171,13 +174,108 @@ async function runBootstrapSync(publicUserId: string): Promise<void> {
   await applyServerState(response, guestSnapshots); // ステップ6・7・10
 
   await markBootstrapped(publicUserId); // ステップ8
-  await clearBatchClientRequestId(publicUserId); // ステップ11相当（このbatchでの再試行は不要になった）
+  await clearBatchId(BATCH_ID_KEY_PREFIX, publicUserId); // ステップ11相当（このbatchでの再試行は不要になった）
   // ステップ12: guestデータは削除しない（何もしない）。
+
+  // このアカウントの初回bootstrap時点のguestRevisionまでは移行済みとして扱う
+  // （直後にログアウトしてゲストとして何もしなければ、次回ログインで無駄な差分移行を走らせない）。
+  await setLastMigratedGuestRevision(publicUserId, await getGuestRevision());
+}
+
+const PENDING_MIGRATION_KEY_PREFIX = 'cardhub.pendingGuestMigration.';
+
+interface PendingGuestMigration {
+  request: SyncBootstrapRequest;
+  /** このsnapshotを作った時点のguestRevision。成功時にこの値を`lastMigratedGuestRevision`へ書く。 */
+  guestRevisionAtSnapshot: number;
+}
+
+async function getPendingGuestMigration(publicUserId: string): Promise<PendingGuestMigration | null> {
+  const raw = await AsyncStorage.getItem(PENDING_MIGRATION_KEY_PREFIX + publicUserId);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as PendingGuestMigration;
+  } catch {
+    return null; // 破損データは「pending無し」扱いにする（次回の差分検知が再度捕まえる）。
+  }
+}
+
+async function savePendingGuestMigration(publicUserId: string, pending: PendingGuestMigration): Promise<void> {
+  await AsyncStorage.setItem(PENDING_MIGRATION_KEY_PREFIX + publicUserId, JSON.stringify(pending));
+}
+
+async function clearPendingGuestMigration(publicUserId: string): Promise<void> {
+  await AsyncStorage.removeItem(PENDING_MIGRATION_KEY_PREFIX + publicUserId);
+}
+
+/** 保存済みリクエストの`userLotteries[].snapshot`から`guestSnapshots`を再構築する（別途保持しない）。 */
+function guestSnapshotsFromRequest(request: SyncBootstrapRequest): Map<number, LotteryRecord> {
+  return new Map(
+    request.userLotteries
+      .filter((item): item is typeof item & { snapshot: LotteryRecord } => item.snapshot !== undefined)
+      .map((item) => [item.lotteryId, item.snapshot])
+  );
+}
+
+/**
+ * guest差分移行（Mobile-G4 Hardening改訂: pending snapshot方式）。
+ *
+ * 「移行が終わるまでnamespaceをguestに留める」方式は、認証済み（authStore.status===
+ * 'signedIn'）なのにローカルのnamespace境界だけguestのままという不整合を生み、通常sync・
+ * 新規ユーザー操作・RevenueCatログインのいずれもaccount namespaceを前提にしているため
+ * 危険と判断し廃止した。代わりに次の方式を採る:
+ *
+ * 1. guest payloadを不変スナップショットとして`publicUserId`ごとにAsyncStorageへ保存する
+ *    （`batchClientRequestId`もリクエストに含めて一緒に確定・保存する）
+ * 2. account namespaceへ即座に切り替える（送信の成否を待たない）
+ * 3. 保存済みsnapshotをサーバーへ送信する（ベストエフォート、失敗しても例外を投げない）
+ * 4. 成功した場合のみsnapshotを削除し`lastMigratedGuestRevision`を更新する
+ *
+ * こうすることで、送信が失敗しても認証・namespace・以降のユーザー操作は常にaccount側で
+ * 一貫する。guest側の生きたstoreには依存しない（`performSwitch`がnamespace切替時に
+ * 切替元のstorageを空にしても、既にsnapshotへ複写済みのため無関係）。snapshotは
+ * `publicUserId`ごとに独立しているため、pending中に別アカウントへログインしても混線しない。
+ */
+async function captureAndSwitchToPendingGuestMigration(publicUserId: string): Promise<PendingGuestMigration> {
+  const guestRevisionAtSnapshot = await getGuestRevision();
+  const batchClientRequestId = await getOrCreateBatchId(DIFF_BATCH_ID_KEY_PREFIX, publicUserId);
+
+  const request = await freezeCurrentNamespace(() => buildSyncRequest(batchClientRequestId));
+  const pending: PendingGuestMigration = { request, guestRevisionAtSnapshot };
+  await savePendingGuestMigration(publicUserId, pending);
+
+  await syncNamespaceWithAuthUser(); // account namespaceへ切替。以降の通常操作は全てaccount側になる。
+
+  return pending;
+}
+
+/** 保存済みpending snapshotをサーバーへ送信する。失敗しても例外を投げず、次回再試行に委ねる。 */
+async function attemptPendingGuestMigration(publicUserId: string, pending: PendingGuestMigration): Promise<void> {
+  try {
+    const response = await postSyncBootstrap(pending.request);
+    await applyServerState(response, guestSnapshotsFromRequest(pending.request));
+
+    await setLastMigratedGuestRevision(publicUserId, pending.guestRevisionAtSnapshot);
+    await clearBatchId(DIFF_BATCH_ID_KEY_PREFIX, publicUserId);
+    await clearPendingGuestMigration(publicUserId);
+  } catch {
+    useSyncConflictsStore.getState().addConflict({
+      id: 'guest-migration-failed',
+      kind: 'guestMigrationFailed',
+      message: 'ログアウト中に追加したデータを同期できませんでした。次回起動時に自動で再試行します',
+    });
+  }
 }
 
 /**
  * ログイン成功後・アプリ起動時のセッション復元後に呼ぶ、唯一の公開エントリポイント。
- * bootstrap未実施なら実行し、実施済みならnamespace切替のみ行う。
+ * - bootstrap未実施なら初回bootstrapを実行する
+ * - このアカウント宛の未完了pending snapshotがあれば、まずその再送を試みる
+ *   （アプリ強制終了・前回ログイン失敗からの再開に対応。namespace切替も未完了の可能性が
+ *   あるため`syncNamespaceWithAuthUser`を先に確定させる——既に切替済みなら即returnする）
+ * - bootstrap済みで、前回ログイン以降にguestとして行った未移行の変更があれば、
+ *   pending snapshotとして確定→account namespaceへ切替→送信を試みる
+ * - 変更が無ければnamespace切替のみ
  */
 export async function ensureNamespaceAndBootstrap(): Promise<void> {
   const publicUserId = useAuthStore.getState().user?.publicUserId;
@@ -186,11 +284,26 @@ export async function ensureNamespaceAndBootstrap(): Promise<void> {
   if (bootstrapInFlight) return bootstrapInFlight;
 
   bootstrapInFlight = (async () => {
-    if (await isBootstrapped(publicUserId)) {
-      await syncNamespaceWithAuthUser();
+    if (!(await isBootstrapped(publicUserId))) {
+      await runBootstrapSync(publicUserId);
       return;
     }
-    await runBootstrapSync(publicUserId);
+
+    const existingPending = await getPendingGuestMigration(publicUserId);
+    if (existingPending) {
+      await syncNamespaceWithAuthUser();
+      await attemptPendingGuestMigration(publicUserId, existingPending);
+      return;
+    }
+
+    const [guestRevision, lastMigrated] = await Promise.all([getGuestRevision(), getLastMigratedGuestRevision(publicUserId)]);
+    if (guestRevision > lastMigrated) {
+      const pending = await captureAndSwitchToPendingGuestMigration(publicUserId);
+      await attemptPendingGuestMigration(publicUserId, pending);
+      return;
+    }
+
+    await syncNamespaceWithAuthUser();
   })().finally(() => {
     bootstrapInFlight = null;
   });

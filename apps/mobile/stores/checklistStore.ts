@@ -3,6 +3,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { createAccountScopedStorage, isNamespaceSwitching, isSyncEligible, registerAccountScopedStore } from '@/lib/accountNamespace';
 import { generateClientRequestId } from '@/lib/clientRequestId';
+import { markGuestDataChanged } from '@/lib/guestRevision';
 import { enqueueOperation } from '@/lib/offlineQueue';
 import { registerQueueResultHandler, type QueueSuccessOutcome } from '@/lib/offlineQueueResultRouter';
 import { putChecklistResponseSchema } from '@/schemas/syncApi';
@@ -90,6 +91,7 @@ export const useChecklistStore = create<ChecklistState>()(
           });
           return { groups: { ...state.groups, [lotteryId]: updated } };
         });
+        void markGuestDataChanged();
         if (updatedStep) enqueueStepPut(lotteryId, updatedStep);
       },
       addStep: (lotteryId, label) => {
@@ -99,6 +101,7 @@ export const useChecklistStore = create<ChecklistState>()(
           const steps = state.groups[lotteryId] ?? [];
           return { groups: { ...state.groups, [lotteryId]: [...steps, newStep] } };
         });
+        void markGuestDataChanged();
         enqueueStepPut(lotteryId, newStep);
       },
       getSteps: (lotteryId) => get().groups[lotteryId] ?? [],

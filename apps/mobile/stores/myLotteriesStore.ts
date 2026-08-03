@@ -4,6 +4,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { fetchLotteryById } from '@/lib/apiClient';
 import { createAccountScopedStorage, isNamespaceSwitching, isSyncEligible, registerAccountScopedStore } from '@/lib/accountNamespace';
 import { generateClientRequestId } from '@/lib/clientRequestId';
+import { markGuestDataChanged } from '@/lib/guestRevision';
 import { enqueueOperation } from '@/lib/offlineQueue';
 import { registerQueueResultHandler } from '@/lib/offlineQueueResultRouter';
 import type { LotteryRecord } from '@/schemas/lotteryApi';
@@ -56,6 +57,7 @@ export const useMyLotteriesStore = create<MyLotteriesState>()(
         if (get().saved.some((s) => s.record.id === record.id)) return;
         const savedAt = new Date().toISOString();
         set((state) => ({ saved: [...state.saved, { record, savedAt }] }));
+        void markGuestDataChanged();
 
         if (isSyncEligible()) {
           const clientRequestId = generateClientRequestId();
@@ -72,6 +74,7 @@ export const useMyLotteriesStore = create<MyLotteriesState>()(
       removeLottery: (lotteryId) => {
         if (isNamespaceSwitching()) return;
         set((state) => ({ saved: state.saved.filter((s) => s.record.id !== lotteryId) }));
+        void markGuestDataChanged();
 
         if (isSyncEligible()) {
           const clientRequestId = generateClientRequestId();

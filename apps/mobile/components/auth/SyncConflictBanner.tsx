@@ -9,6 +9,7 @@ const TITLE_BY_KIND: Record<SyncConflictKind, string> = {
   checklistVersionConflict: '別の端末で更新されました',
   notificationPreferencesVersionConflict: '別の端末で通知設定が変更されています',
   idempotencyConflict: '操作を反映できませんでした',
+  guestMigrationFailed: '一部データを同期できませんでした',
 };
 
 /**
