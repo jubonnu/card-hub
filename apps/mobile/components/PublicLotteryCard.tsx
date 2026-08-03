@@ -89,7 +89,7 @@ export function PublicLotteryCard({
         <View style={styles.secondaryActionRow}>
           {personalStatus ? <PersonalStatusBadge status={personalStatus} size="md" onPress={onPersonalStatusPress} /> : null}
           {secondaryActionLabel && onSecondaryActionPress ? (
-            <SecondaryButton label={secondaryActionLabel} size="md" onPress={onSecondaryActionPress} />
+            <SecondaryButton label={secondaryActionLabel} size="sm" onPress={onSecondaryActionPress} />
           ) : null}
         </View>
       ) : null}
