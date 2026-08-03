@@ -64,4 +64,64 @@ describe('notificationSettingsStore', () => {
     // 自動マージしない: ローカルのpushEnabledはユーザー操作通りfalseのまま維持される。
     expect(useNotificationSettingsStore.getState().pushEnabled).toBe(false);
   });
+
+  describe('setQuietHours', () => {
+    it('HH:mm形式へ正規化してから保存する', () => {
+      global.fetch = vi.fn();
+      useNotificationSettingsStore.getState().setQuietHours('9:5', '23:0');
+      expect(useNotificationSettingsStore.getState().quietHoursStart).toBe('09:05');
+      expect(useNotificationSettingsStore.getState().quietHoursEnd).toBe('23:00');
+    });
+
+    it('不正な形式は保存しない', () => {
+      global.fetch = vi.fn();
+      const before = useNotificationSettingsStore.getState();
+      useNotificationSettingsStore.getState().setQuietHours('25:00', '07:00');
+      expect(useNotificationSettingsStore.getState().quietHoursStart).toBe(before.quietHoursStart);
+      expect(useNotificationSettingsStore.getState().quietHoursEnd).toBe(before.quietHoursEnd);
+    });
+
+    it('guestではキューへenqueueしない', () => {
+      global.fetch = vi.fn();
+      useNotificationSettingsStore.getState().setQuietHours('22:00', '07:00');
+      expect(useOfflineQueueStore.getState().operations).toHaveLength(0);
+    });
+
+    it('signedInで全13項目を送り、成功でserverVersionが更新される（既存setterと同じ同期経路）', async () => {
+      useNamespaceStore.setState({ namespace: 'userA', isSwitching: false });
+      useAuthStore.setState({ status: 'signedIn', sessionAvailability: 'online', user: null, accessToken: 'at', accessTokenExpiresAt: Date.now() + 10 * 60_000 });
+      global.fetch = vi
+        .fn()
+        .mockResolvedValue(jsonResponse(200, { ...defaultNotificationSettings, quietHoursStart: '21:00', quietHoursEnd: '08:00', serverVersion: 1, outcome: 'created' }));
+
+      useNotificationSettingsStore.getState().setQuietHours('21:00', '08:00');
+      const [op] = useOfflineQueueStore.getState().operations;
+      expect(JSON.parse(JSON.stringify(op.payload))).toMatchObject({
+        quietHoursStart: '21:00',
+        quietHoursEnd: '08:00',
+        deadlineReminder: true,
+        expectedServerVersion: 0,
+      });
+
+      await processQueue();
+
+      expect(useOfflineQueueStore.getState().operations).toHaveLength(0);
+      expect(useNotificationSettingsStore.getState().serverVersion).toBe(1);
+    });
+
+    it('サーバー同期失敗（VERSION_CONFLICT）時は、ローカルの変更を維持したままconflictとしてキューに残る', async () => {
+      useNamespaceStore.setState({ namespace: 'userA', isSwitching: false });
+      useAuthStore.setState({ status: 'signedIn', sessionAvailability: 'online', user: null, accessToken: 'at', accessTokenExpiresAt: Date.now() + 10 * 60_000 });
+      global.fetch = vi.fn().mockResolvedValue(
+        jsonResponse(409, { error: { code: 'VERSION_CONFLICT', message: '他端末で変更されています', requestId: 'r1' }, current: { ...defaultNotificationSettings, serverVersion: 5 } })
+      );
+
+      useNotificationSettingsStore.getState().setQuietHours('21:00', '08:00');
+      await processQueue();
+
+      expect(useOfflineQueueStore.getState().operations[0].status).toBe('conflict');
+      expect(useNotificationSettingsStore.getState().quietHoursStart).toBe('21:00');
+      expect(useNotificationSettingsStore.getState().quietHoursEnd).toBe('08:00');
+    });
+  });
 });

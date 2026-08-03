@@ -45,6 +45,19 @@ vi.mock('expo-apple-authentication', () => ({
 }));
 
 /**
+ * lib/notifications.tsが呼ぶexpo-notificationsもネイティブ専用モジュールのため、
+ * 他の同種モジュールと同じくモック化する。各テストは
+ * `vi.mocked(Notifications.scheduleNotificationAsync)`等で呼び出し内容を検証できる。
+ */
+vi.mock('expo-notifications', () => ({
+  setNotificationHandler: vi.fn(),
+  requestPermissionsAsync: vi.fn(async () => ({ status: 'granted' })),
+  scheduleNotificationAsync: vi.fn(async () => 'mock-notification-id'),
+  cancelScheduledNotificationAsync: vi.fn(async () => undefined),
+  SchedulableTriggerInputTypes: { DATE: 'date' },
+}));
+
+/**
  * G4: react-native-purchasesはネイティブモジュールのため、vitest（Node環境）では動作しない。
  * 各テストは`vi.mocked(Purchases.xxx).mockResolvedValue(...)`等で個別の戻り値を設定できる。
  */

@@ -7,6 +7,7 @@ import { generateClientRequestId } from '@/lib/clientRequestId';
 import { markGuestDataChanged } from '@/lib/guestRevision';
 import { enqueueOperation } from '@/lib/offlineQueue';
 import { registerQueueResultHandler } from '@/lib/offlineQueueResultRouter';
+import { normalizeHHMM } from '@/lib/quietHours';
 import { putNotificationPreferencesResponseSchema } from '@/schemas/syncApi';
 import type { NotificationToggleSettings } from '@/types/models';
 
@@ -25,6 +26,8 @@ interface NotificationSettingsState extends NotificationToggleSettings {
   serverVersion: number;
   setToggle: (key: BooleanSettingKey, value: boolean) => void;
   setHours: (key: HoursSettingKey, value: number) => void;
+  /** おやすみ時間帯の開始・終了をまとめて更新する。常にHH:mm形式へ正規化してから保存する。 */
+  setQuietHours: (start: string, end: string) => void;
   /** bootstrap・差分同期からサーバーの正規状態を反映する（G3-3）。 */
   applyServerState: (state: NotificationToggleSettings & { serverVersion: number }) => void;
   applyMutationResult: (serverVersion: number) => void;
@@ -81,6 +84,15 @@ export const useNotificationSettingsStore = create<NotificationSettingsState>()(
       setHours: (key, value) => {
         if (isNamespaceSwitching()) return;
         set({ [key]: value } as Partial<NotificationSettingsState>);
+        void markGuestDataChanged();
+        enqueuePut(get());
+      },
+      setQuietHours: (start, end) => {
+        if (isNamespaceSwitching()) return;
+        const normalizedStart = normalizeHHMM(start);
+        const normalizedEnd = normalizeHHMM(end);
+        if (!normalizedStart || !normalizedEnd) return; // 不正な形式は保存しない
+        set({ quietHoursStart: normalizedStart, quietHoursEnd: normalizedEnd });
         void markGuestDataChanged();
         enqueuePut(get());
       },

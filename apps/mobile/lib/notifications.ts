@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 
+import { adjustTriggerForQuietHours } from '@/lib/quietHours';
 import type { LotteryRecord } from '@/schemas/lotteryApi';
 import type { Lottery, NotificationToggleSettings } from '@/types/models';
 import { getDisplayProductName, getDisplayShopName } from '@/utils/publicLotteryDisplay';
@@ -127,6 +128,8 @@ export async function scheduleApiLotteryReminders(
 ): Promise<void> {
   const lotteryId = String(record.id);
   await cancelLotteryReminders(lotteryId);
+  // 通知のマスターOFF: 既存分のキャンセルのみ行い、新規スケジュールは作らない。
+  if (!settings.pushEnabled) return;
 
   const productName = getDisplayProductName(record);
   const shopName = getDisplayShopName(record);
@@ -164,19 +167,39 @@ export async function scheduleApiLotteryReminders(
   }
 
   const now = Date.now();
+  const quietHours = {
+    enabled: settings.quietHoursEnabled,
+    start: settings.quietHoursStart,
+    end: settings.quietHoursEnd,
+  };
   for (const job of jobs) {
-    const triggerTime = new Date(job.targetIso).getTime() - job.hoursBefore * 60 * 60 * 1000;
-    if (triggerTime <= now) continue;
+    const deadlineMs = new Date(job.targetIso).getTime();
+    const baseTrigger = deadlineMs - job.hoursBefore * 60 * 60 * 1000;
+    const adjusted = adjustTriggerForQuietHours(baseTrigger, deadlineMs, now, quietHours);
+    if (adjusted.skip) {
+      console.warn(`[notifications] おやすみモードのため通知をスキップしました: lottery=${lotteryId} kind=${job.kind} reason=${adjusted.reason}`);
+      continue;
+    }
+    if (adjusted.triggerMs <= now) continue;
 
     await Notifications.scheduleNotificationAsync({
       identifier: identifierFor(lotteryId, job.kind),
       content: { title: job.title, body: job.body },
-      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(triggerTime) },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(adjusted.triggerMs) },
     });
   }
 }
 
-/** 保存済みの実API抽選（LotteryRecord）全件について、現在の通知設定でリマインダーを再スケジュールする。 */
+/**
+ * 保存済みの実API抽選（LotteryRecord）全件について、現在の通知設定でリマインダーを再スケジュールする。
+ *
+ * 現状これが呼ばれるのは`app/notification-settings/[lotteryId].tsx`のuseEffect
+ * （通知設定画面を開いている間、関連する設定/保存済み抽選が変わった時）のみ。
+ * アプリ起動時やbootstrap後（他端末で設定が変わっていた場合など）には自動で
+ * 呼ばれないため、通知設定画面を一度も開かないと、古い設定のまま予約された
+ * ローカル通知が残り続ける可能性がある（将来課題: アプリ起動時・bootstrap完了後に
+ * 一度だけ全件再評価する仕組みを追加する）。
+ */
 export async function rescheduleAllApiReminders(
   records: LotteryRecord[],
   settings: NotificationToggleSettings
