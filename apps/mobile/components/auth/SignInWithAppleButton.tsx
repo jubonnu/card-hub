@@ -26,6 +26,7 @@ export function SignInWithAppleButton({ onSuccess }: SignInWithAppleButtonProps)
       onSuccess?.();
     } catch (e) {
       if (e instanceof AppleSignInCancelledError) return;
+      console.error('[SignInWithApple] failed', e);
       Alert.alert('サインインできませんでした', 'もう一度お試しください');
     } finally {
       setIsSigningIn(false);
