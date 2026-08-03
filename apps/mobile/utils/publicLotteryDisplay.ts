@@ -1,5 +1,5 @@
 import type { LotteryRecord } from '@/schemas/lotteryApi';
-import { formatDateTimeShort, formatRemaining, isPast, normalizeDeadline } from '@/utils/time';
+import { formatDateTimeShort, formatMonthDayWeekday, formatRemaining, isPast, normalizeDeadline } from '@/utils/time';
 
 /**
  * 実API（GET /lotteries）が返す抽選レコードは、Phase-Aのモック `LotteryStatus`
@@ -113,4 +113,83 @@ export function getBodyMetaLine(record: LotteryRecord): string {
   if (announcement) return `当選発表　${formatDateTimeShort(announcement)}`;
 
   return '締切・発表日は未公開です';
+}
+
+/**
+ * 抽選詳細画面の共有機能（`components/ShareLotteryButton.tsx`）が入力とする、
+ * 共有テキスト生成専用の小さなViewModel。
+ *
+ * 実データ（`LotteryRecord`）専用の型にせず、あえてこの中間形にすることで、
+ * モックデータ画面（`app/lotteries/[id].tsx`の`MockLotteryDetailScreen`、別の`Lottery`型を
+ * 使う）からも、無理に`LotteryRecord`へ変換せずに同じ`buildLotteryShareText`を呼べるようにする。
+ */
+export interface LotteryShareInput {
+  title: string;
+  shopName: string | null;
+  storeBranch: string | null;
+  applicationEnd: { at: string | null; dateOnly: string | null };
+  resultAnnouncement: { at: string | null; dateOnly: string | null };
+  purchaseDeadlineAt: string | null;
+  applicationMethod: string | null;
+  applicationUrl: string | null;
+}
+
+/** trim後に空文字でない最初の値を返す。無ければnull（「情報なし」等のプレースホルダは使わない）。 */
+function firstNonEmpty(...values: (string | null | undefined)[]): string | null {
+  for (const v of values) {
+    const trimmed = v?.trim();
+    if (trimmed) return trimmed;
+  }
+  return null;
+}
+
+/** `_at`（時刻付き）があれば時刻ありで、`_date`（日付のみ）しか無ければ時刻なしでフォーマットする。 */
+function formatAtOrDateOnly(at: string | null, dateOnly: string | null): string | null {
+  if (at) return formatDateTimeShort(at);
+  if (dateOnly) return formatMonthDayWeekday(dateOnly);
+  return null;
+}
+
+/** 実データ（`LotteryRecord`）を共有用ViewModelへ変換する。resolvedApplicationUrlを優先し、空文字は無視する。 */
+export function toLotteryShareInput(record: LotteryRecord): LotteryShareInput {
+  return {
+    title: getDisplayProductName(record),
+    shopName: firstNonEmpty(record.storeNameRaw, record.normalizedStoreName),
+    storeBranch: firstNonEmpty(record.storeBranchRaw),
+    applicationEnd: { at: record.applicationEndAt, dateOnly: record.applicationEndDate },
+    resultAnnouncement: { at: record.resultAnnouncementAt, dateOnly: record.resultAnnouncementDate },
+    purchaseDeadlineAt: firstNonEmpty(record.purchaseDeadlineAt),
+    applicationMethod: firstNonEmpty(record.applicationMethod),
+    applicationUrl: firstNonEmpty(record.resolvedApplicationUrl, record.applicationUrl),
+  };
+}
+
+/**
+ * 抽選情報の共有テキストを組み立てる。存在する情報だけを含め、値が無い項目は行ごと省略する。
+ * タイトルは必須（「商品名未確認」等のフォールバック込みで常に1行目に入る）。
+ */
+export function buildLotteryShareText(input: LotteryShareInput): string {
+  const shopLine = input.shopName
+    ? `店舗: ${input.shopName}${input.storeBranch ? ` ${input.storeBranch}` : ''}`
+    : null;
+
+  const deadlineText = formatAtOrDateOnly(input.applicationEnd.at, input.applicationEnd.dateOnly);
+  const deadlineLine = deadlineText ? `応募締切: ${deadlineText}` : null;
+
+  const announceText = formatAtOrDateOnly(input.resultAnnouncement.at, input.resultAnnouncement.dateOnly);
+  const announceLine = announceText ? `当選発表: ${announceText}` : null;
+
+  const purchaseLine = input.purchaseDeadlineAt ? `購入期限: ${formatDateTimeShort(input.purchaseDeadlineAt)}` : null;
+
+  const methodLine = input.applicationMethod ? `応募方法: ${input.applicationMethod}` : null;
+
+  const infoLines = [shopLine, deadlineLine, announceLine, purchaseLine, methodLine].filter(
+    (line): line is string => line !== null
+  );
+
+  const sections = [[input.title], infoLines, input.applicationUrl ? ['応募ページ:', input.applicationUrl] : []].filter(
+    (section) => section.length > 0
+  );
+
+  return sections.map((section) => section.join('\n')).join('\n\n');
 }

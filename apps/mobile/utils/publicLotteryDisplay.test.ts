@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import type { LotteryRecord } from '@/schemas/lotteryApi';
-import { compareLotteriesByTimeline, derivePublicTimelineStatus } from './publicLotteryDisplay';
+import {
+  buildLotteryShareText,
+  compareLotteriesByTimeline,
+  derivePublicTimelineStatus,
+  toLotteryShareInput,
+  type LotteryShareInput,
+} from './publicLotteryDisplay';
 
 const NOW_ISO = '2026-08-03T00:00:00.000Z';
 
@@ -208,5 +214,149 @@ describe('compareLotteriesByTimeline', () => {
     const secondRun = [...records].sort((a, b) => compareLotteriesByTimeline(a, b, NOW_ISO)).map((r) => r.id);
 
     expect(firstRun).toEqual(secondRun);
+  });
+});
+
+describe('buildLotteryShareText', () => {
+  const full: LotteryShareInput = {
+    title: 'ONE PIECE カードゲーム 世界最強の戦士',
+    shopName: 'イオンスタイルオンライン',
+    storeBranch: null,
+    applicationEnd: { at: '2026-08-10T14:59:00.000Z', dateOnly: null }, // JST 2026-08-10 23:59
+    resultAnnouncement: { at: null, dateOnly: '2026-08-15' },
+    purchaseDeadlineAt: '2026-08-17T15:00:00.000Z', // JST 2026-08-18 00:00
+    applicationMethod: 'イオンスタイルオンラインアプリから応募',
+    applicationUrl: 'https://example.com/lottery',
+  };
+
+  it('全項目がある場合、この順で全行が結合される', () => {
+    const text = buildLotteryShareText(full);
+    expect(text).toBe(
+      [
+        'ONE PIECE カードゲーム 世界最強の戦士',
+        '',
+        '店舗: イオンスタイルオンライン',
+        '応募締切: 8/10 (月) 23:59',
+        '当選発表: 8/15 (土)',
+        '購入期限: 8/18 (火) 00:00',
+        '応募方法: イオンスタイルオンラインアプリから応募',
+        '',
+        '応募ページ:',
+        'https://example.com/lottery',
+      ].join('\n')
+    );
+  });
+
+  it('タイトルと店舗名だけの場合、その2行のみでURL区画は無い', () => {
+    const input: LotteryShareInput = {
+      title: '商品A',
+      shopName: '店舗A',
+      storeBranch: null,
+      applicationEnd: { at: null, dateOnly: null },
+      resultAnnouncement: { at: null, dateOnly: null },
+      purchaseDeadlineAt: null,
+      applicationMethod: null,
+      applicationUrl: null,
+    };
+    expect(buildLotteryShareText(input)).toBe('商品A\n\n店舗: 店舗A');
+  });
+
+  it('締切が日付のみの場合、時刻を含めずフォーマットする', () => {
+    const input: LotteryShareInput = { ...full, applicationEnd: { at: null, dateOnly: '2026-08-10' } };
+    const text = buildLotteryShareText(input);
+    expect(text).toContain('応募締切: 8/10 (月)');
+    expect(text).not.toContain('応募締切: 8/10 (月) ');
+  });
+
+  it('締切が時刻付きの場合、時刻を含めてフォーマットする', () => {
+    const text = buildLotteryShareText(full);
+    expect(text).toContain('応募締切: 8/10 (月) 23:59');
+  });
+
+  it('infoLinesが0件でURLだけある場合、タイトルとURL区画のみになる', () => {
+    const input: LotteryShareInput = {
+      title: '商品A',
+      shopName: null,
+      storeBranch: null,
+      applicationEnd: { at: null, dateOnly: null },
+      resultAnnouncement: { at: null, dateOnly: null },
+      purchaseDeadlineAt: null,
+      applicationMethod: null,
+      applicationUrl: 'https://example.com',
+    };
+    expect(buildLotteryShareText(input)).toBe('商品A\n\n応募ページ:\nhttps://example.com');
+  });
+
+  it('タイトルしかない場合、末尾に余分な改行が入らない', () => {
+    const input: LotteryShareInput = {
+      title: '商品A',
+      shopName: null,
+      storeBranch: null,
+      applicationEnd: { at: null, dateOnly: null },
+      resultAnnouncement: { at: null, dateOnly: null },
+      purchaseDeadlineAt: null,
+      applicationMethod: null,
+      applicationUrl: null,
+    };
+    expect(buildLotteryShareText(input)).toBe('商品A');
+  });
+
+  it('支店名がある場合、店舗名の後にスペース区切りで連結される', () => {
+    const input: LotteryShareInput = { ...full, storeBranch: '渋谷店' };
+    expect(buildLotteryShareText(input)).toContain('店舗: イオンスタイルオンライン 渋谷店');
+  });
+});
+
+describe('toLotteryShareInput（LotteryRecord → 共有ViewModel）', () => {
+  it('storeNameRaw・storeBranchRawの前後空白はtrimされ、結合後も余分な空白が入らない', () => {
+    const record = makeRecord({
+      id: 1,
+      productNameRaw: '商品A',
+      storeNameRaw: '  ドラゴンスター  ',
+      storeBranchRaw: '  渋谷店  ',
+    });
+    const input = toLotteryShareInput(record);
+    expect(input.shopName).toBe('ドラゴンスター');
+    expect(input.storeBranch).toBe('渋谷店');
+    expect(buildLotteryShareText(input)).toContain('店舗: ドラゴンスター 渋谷店');
+  });
+
+  it('resolvedApplicationUrlが空文字でapplicationUrlが有効な場合、applicationUrlが使われる', () => {
+    const record = makeRecord({
+      id: 1,
+      productNameRaw: '商品A',
+      resolvedApplicationUrl: '',
+      applicationUrl: 'https://example.com/apply',
+    });
+    expect(toLotteryShareInput(record).applicationUrl).toBe('https://example.com/apply');
+  });
+
+  it('resolvedApplicationUrlが有効な場合、applicationUrlより優先される', () => {
+    const record = makeRecord({
+      id: 1,
+      productNameRaw: '商品A',
+      resolvedApplicationUrl: 'https://example.com/resolved',
+      applicationUrl: 'https://example.com/original',
+    });
+    expect(toLotteryShareInput(record).applicationUrl).toBe('https://example.com/resolved');
+  });
+
+  it('両方のURLが空（空文字・null）の場合、applicationUrlはnullになりURL区画は出ない', () => {
+    const record = makeRecord({
+      id: 1,
+      productNameRaw: '商品A',
+      resolvedApplicationUrl: '',
+      applicationUrl: null,
+    });
+    const input = toLotteryShareInput(record);
+    expect(input.applicationUrl).toBeNull();
+    expect(buildLotteryShareText(input)).not.toContain('応募ページ');
+  });
+
+  it('タイトルが商品名未確認（productNameRaw・normalizedProductNameともに無し）でも共有テキストが組み立てられる', () => {
+    const record = makeRecord({ id: 1, productNameRaw: null, normalizedProductName: null });
+    const input = toLotteryShareInput(record);
+    expect(input.title).toBe('商品名未確認');
+    expect(buildLotteryShareText(input)).toContain('商品名未確認');
   });
 });

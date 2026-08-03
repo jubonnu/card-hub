@@ -4,12 +4,13 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 're
 
 import { DetailHeader } from '@/components/DetailHeader';
 import { ErrorState } from '@/components/ErrorState';
-import { CalendarIcon, ClockIcon, ExternalLinkIcon, ShareIcon, StarIcon } from '@/components/icons';
+import { CalendarIcon, ClockIcon, ExternalLinkIcon, StarIcon } from '@/components/icons';
 import { ProductThumb } from '@/components/ProductThumb';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { PublicStatusBadge, VerificationCautionBadge } from '@/components/PublicStatusBadge';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { SecondaryButton } from '@/components/SecondaryButton';
+import { ShareLotteryButton } from '@/components/ShareLotteryButton';
 import { StatusBadge } from '@/components/StatusBadge';
 import { lotteries } from '@/data/mockData';
 import { useApiRequest } from '@/hooks/useApiRequest';
@@ -24,10 +25,13 @@ import { useTheme } from '@/theme/useTheme';
 import type { Lottery } from '@/types/models';
 import { formatDateTimeShort, formatRemaining, isPast, normalizeDeadline } from '@/utils/time';
 import {
+  buildLotteryShareText,
   derivePublicTimelineStatus,
   getDisplayProductName,
   getDisplayShopName,
   needsVerificationCaution,
+  toLotteryShareInput,
+  type LotteryShareInput,
 } from '@/utils/publicLotteryDisplay';
 
 /**
@@ -48,10 +52,15 @@ function ApiLotteryDetailScreen({ id }: { id: number }) {
   const theme = useTheme();
   const nowIso = useMemo(() => new Date().toISOString(), []);
   const apiState = useApiRequest((signal) => fetchLotteryById(id, signal), [id]);
+  const shareText =
+    apiState.status === 'success' ? buildLotteryShareText(toLotteryShareInput(apiState.data.lottery)) : '';
 
   return (
     <ScreenContainer edges={['top', 'bottom']}>
-      <DetailHeader title="抽選詳細" right={<ShareIcon color={theme.colors.textPrimary} />} />
+      <DetailHeader
+        title="抽選詳細"
+        right={<ShareLotteryButton shareText={shareText} disabled={apiState.status !== 'success'} />}
+      />
 
       {apiState.status === 'loading' ? (
         <View style={styles.centerFill}>
@@ -248,6 +257,7 @@ function MockLotteryDetailScreen({ id }: { id: string }) {
   }
 
   const deadlinePast = isPast(lottery.applicationDeadline, nowIso);
+  const shareText = buildLotteryShareText(toLotteryShareInputFromMock(lottery));
 
   async function handleAddToCalendar() {
     const granted = await ensureCalendarPermission();
@@ -274,7 +284,7 @@ function MockLotteryDetailScreen({ id }: { id: string }) {
 
   return (
     <ScreenContainer edges={['top', 'bottom']}>
-      <DetailHeader title="抽選詳細" right={<ShareIcon color={theme.colors.textPrimary} />} />
+      <DetailHeader title="抽選詳細" right={<ShareLotteryButton shareText={shareText} />} />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.topRow}>
@@ -340,6 +350,24 @@ function MockLotteryDetailScreen({ id }: { id: string }) {
       </View>
     </ScreenContainer>
   );
+}
+
+/**
+ * モックデータ（`Lottery`型、`data/mockData.ts`）を共有用ViewModelへ変換する。
+ * モックの日時フィールドは常に時刻付きの文字列で欠損も無いため、日付のみ（dateOnly）は
+ * 使わない。支店の概念も無いためstoreBranchは常にnull。
+ */
+function toLotteryShareInputFromMock(lottery: Lottery): LotteryShareInput {
+  return {
+    title: lottery.productName?.trim() || '商品名未確認',
+    shopName: lottery.shopName?.trim() || null,
+    storeBranch: null,
+    applicationEnd: { at: lottery.applicationDeadline || null, dateOnly: null },
+    resultAnnouncement: { at: lottery.announcementDate || null, dateOnly: null },
+    purchaseDeadlineAt: lottery.purchaseDeadline?.trim() || null,
+    applicationMethod: lottery.method?.trim() || null,
+    applicationUrl: lottery.applyUrl?.trim() || null,
+  };
 }
 
 function InfoRow({ label, value, dotColor }: { label: string; value: string; dotColor?: string }) {
