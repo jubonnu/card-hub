@@ -81,15 +81,3 @@ export interface NotificationToggleSettings {
   announcementReminderHoursBefore: number;
   purchaseReminderHoursBefore: number;
 }
-
-export interface MonthlyStat {
-  month: string;
-  applied: number;
-  won: number;
-  purchased: number;
-}
-
-export interface ShopWinRate {
-  shopName: string;
-  winRate: number;
-}

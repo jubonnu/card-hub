@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { LotteryRecord } from '@/schemas/lotteryApi';
+import type { PersonalLotteryStatus } from '@/theme/colors';
 import { useTheme } from '@/theme/useTheme';
 import {
   derivePublicTimelineStatus,
@@ -12,6 +13,7 @@ import {
 } from '@/utils/publicLotteryDisplay';
 
 import { ChevronRightIcon } from './icons';
+import { PersonalStatusBadge } from './PersonalStatusBadge';
 import { ProductThumb } from './ProductThumb';
 import { PublicStatusBadge, VerificationCautionBadge } from './PublicStatusBadge';
 import { SecondaryButton } from './SecondaryButton';
@@ -22,6 +24,9 @@ interface PublicLotteryCardProps {
   onPress?: () => void;
   secondaryActionLabel?: string;
   onSecondaryActionPress?: () => void;
+  /** 個人ステータス（Mobile-G6、「自分の抽選」一覧でのみ使用）。渡すとタップでステータス変更操作を開始できる。 */
+  personalStatus?: PersonalLotteryStatus;
+  onPersonalStatusPress?: () => void;
 }
 
 /**
@@ -37,6 +42,8 @@ export function PublicLotteryCard({
   onPress,
   secondaryActionLabel,
   onSecondaryActionPress,
+  personalStatus,
+  onPersonalStatusPress,
 }: PublicLotteryCardProps) {
   const theme = useTheme();
   const status = derivePublicTimelineStatus(record, nowIso);
@@ -78,9 +85,12 @@ export function PublicLotteryCard({
         </View>
         <ChevronRightIcon />
       </View>
-      {secondaryActionLabel && onSecondaryActionPress ? (
+      {(personalStatus ?? (secondaryActionLabel && onSecondaryActionPress)) ? (
         <View style={styles.secondaryActionRow}>
-          <SecondaryButton label={secondaryActionLabel} size="md" onPress={onSecondaryActionPress} />
+          {personalStatus ? <PersonalStatusBadge status={personalStatus} size="md" onPress={onPersonalStatusPress} /> : null}
+          {secondaryActionLabel && onSecondaryActionPress ? (
+            <SecondaryButton label={secondaryActionLabel} size="md" onPress={onSecondaryActionPress} />
+          ) : null}
         </View>
       ) : null}
     </Pressable>
@@ -132,5 +142,8 @@ const styles = StyleSheet.create({
   },
   secondaryActionRow: {
     marginTop: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
 });

@@ -74,7 +74,7 @@ describe('differentialSync', () => {
 
   beforeEach(async () => {
     process.env.EXPO_PUBLIC_API_BASE_URL = 'https://api.example.test';
-    useMyLotteriesStore.setState({ saved: [{ record, savedAt: '2026-01-01T00:00:00.000Z' }] });
+    useMyLotteriesStore.setState({ saved: [{ record, savedAt: '2026-01-01T00:00:00.000Z', status: 'unknown' }] });
     useFavoritesStore.setState({ favoriteLotteryIds: [], followedProductKeys: [], followedProductIds: [] });
     useNotificationSettingsStore.setState({ ...defaultNotificationSettings, serverVersion: 0 });
     useOfflineQueueStore.getState().clear();

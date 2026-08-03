@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
@@ -14,17 +14,20 @@ import {
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { SyncConflictBanner } from '@/components/auth/SyncConflictBanner';
-import { monthlyStats } from '@/data/mockData';
 import { deleteAccount, signOut, signOutAllDevices } from '@/lib/authActions';
 import { resolveDisplayName } from '@/lib/displayName';
+import { fetchStatisticsMonthly } from '@/lib/statisticsClient';
+import type { StatisticsMonthlyItem } from '@/schemas/statisticsApi';
+import { useBillingStore } from '@/stores/billingStore';
 import { useFavoritesStore } from '@/stores/favoritesStore';
+import { useMyLotteriesStore } from '@/stores/myLotteriesStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/theme/useTheme';
 
 /**
- * 今月の実績・データのバックアップは、集計・バックアップの実装が無いため一旦モック表示に
- * 戻している（本人の要望により復活。追って実装予定）。それ以外の応答しない導線（設定／
- * ヘルプ・お問い合わせ等）は非表示のまま。
+ * 今月の実績はMobile-G6で実データ化。無料ユーザーには保存件数（実件数）のみ開放し、
+ * 応募数・当選数・当選率はpremium加入者にのみ表示する（9・11章の無料/premium境界）。
+ * データのバックアップは未実装のため引き続き準備中扱い。
  *
  * アカウント（プロフィール表示・ログアウト・アカウント削除、G3-2）は`authStore`の実データを使う。
  */
@@ -33,11 +36,33 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { favoriteLotteryIds, followedProductKeys } = useFavoritesStore();
   const { status, user } = useAuthStore();
-  const latest = monthlyStats[monthlyStats.length - 1];
-  const winRate = latest.applied > 0 ? ((latest.won / latest.applied) * 100).toFixed(1) : '0.0';
+  const { saved } = useMyLotteriesStore();
+  const billing = useBillingStore();
+  const isPremium = billing.localEntitlementActive || billing.serverPremiumActive;
   const [pendingAction, setPendingAction] = useState<'signOut' | 'signOutAll' | 'delete' | null>(null);
+  const [thisMonth, setThisMonth] = useState<StatisticsMonthlyItem | null>(null);
 
   const isSignedIn = status === 'signedIn' && user != null;
+
+  useEffect(() => {
+    if (!isSignedIn || !isPremium) {
+      setThisMonth(null);
+      return;
+    }
+    let cancelled = false;
+    fetchStatisticsMonthly(1)
+      .then((res) => {
+        if (!cancelled) setThisMonth(res.items[0] ?? null);
+      })
+      .catch(() => {
+        // プレビューカードのベストエフォート表示のため、失敗時は静かに「-」表示へフォールバックする。
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isSignedIn, isPremium]);
+
+  const winRateLabel = thisMonth?.winRate != null ? `${(thisMonth.winRate * 100).toFixed(1)}%` : '-';
 
   const handleSignOut = () => {
     Alert.alert('ログアウトしますか？', '', [
@@ -166,10 +191,10 @@ export default function ProfileScreen() {
               <Text style={[styles.statsHeaderLink, { color: theme.colors.darkCardAccent }]}>詳しく見る ›</Text>
             </View>
             <View style={styles.statsGrid}>
-              <StatItem label="応募数" value={String(latest.applied)} color="#fff" />
-              <StatItem label="当選数" value={String(latest.won)} color="#fff" />
-              <StatItem label="当選率" value={`${winRate}%`} color={theme.colors.darkCardAccent} />
-              <StatItem label="購入数" value={String(latest.purchased)} color="#fff" />
+              <StatItem label="保存数" value={String(saved.length)} color="#fff" />
+              <StatItem label="応募数" value={isPremium ? String(thisMonth?.appliedCount ?? '-') : '🔒'} color="#fff" />
+              <StatItem label="当選数" value={isPremium ? String(thisMonth?.wonCount ?? '-') : '🔒'} color="#fff" />
+              <StatItem label="当選率" value={isPremium ? winRateLabel : '🔒'} color={theme.colors.darkCardAccent} />
             </View>
           </Pressable>
         </View>

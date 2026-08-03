@@ -71,6 +71,8 @@ export const authApiErrorCodeSchema = z.enum([
   'AUTH_PROVIDER_UNAVAILABLE',
   'SERVICE_BUSY',
   'INTERNAL_ERROR',
+  /** premium加入が必要（Mobile-G6、/me/statistics/*等）。 */
+  'PREMIUM_REQUIRED',
 ]);
 export type AuthApiErrorCode = z.infer<typeof authApiErrorCodeSchema>;
 

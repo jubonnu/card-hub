@@ -1,15 +1,27 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DetailHeader } from '@/components/DetailHeader';
 import { EmptyState } from '@/components/EmptyState';
 import { HeartIcon } from '@/components/icons';
 import { PublicLotteryCard } from '@/components/PublicLotteryCard';
 import { ScreenContainer } from '@/components/ScreenContainer';
-import { useMyLotteriesStore } from '@/stores/myLotteriesStore';
+import { isCorrectionTransition, nextLotteryStatusOptions } from '@/lib/lotteryStatusTransitions';
+import { useMyLotteriesStore, type SavedLottery } from '@/stores/myLotteriesStore';
+import type { PersonalLotteryStatus } from '@/theme/colors';
 import { useTheme } from '@/theme/useTheme';
 import { derivePublicTimelineStatus } from '@/utils/publicLotteryDisplay';
+
+const PERSONAL_STATUS_LABEL: Record<PersonalLotteryStatus, string> = {
+  unknown: '未設定',
+  planned: '応募予定',
+  applied: '応募済み',
+  won: '当選',
+  lost: '落選',
+  purchased: '購入済み',
+  skipped: '見送り',
+};
 
 const TABS = [
   { key: 'all', label: 'すべて' },
@@ -28,15 +40,40 @@ function deadlineSortKey(record: { applicationEndAt: string | null; applicationE
 export default function MyLotteriesScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const { saved } = useMyLotteriesStore();
+  const { saved, setStatus } = useMyLotteriesStore();
   const [tab, setTab] = useState<TabKey>('all');
   const nowIso = useMemo(() => new Date().toISOString(), []);
 
   const filtered = useMemo(() => {
-    const records = saved.map((s) => s.record);
-    const byTab = tab === 'all' ? records : records.filter((r) => derivePublicTimelineStatus(r, nowIso) === tab);
-    return [...byTab].sort((a, b) => deadlineSortKey(a) - deadlineSortKey(b));
+    const byTab = tab === 'all' ? saved : saved.filter((s) => derivePublicTimelineStatus(s.record, nowIso) === tab);
+    return [...byTab].sort((a, b) => deadlineSortKey(a.record) - deadlineSortKey(b.record));
   }, [saved, tab, nowIso]);
+
+  const openStatusSheet = (item: SavedLottery) => {
+    if (item.serverVersion === undefined) {
+      Alert.alert('同期中です', 'この抽選の保存が完了してから、ステータスを変更できます');
+      return;
+    }
+
+    const options = nextLotteryStatusOptions(item.status);
+    if (options.length === 0) return;
+
+    const buttons = options.map((next) => ({
+      text: PERSONAL_STATUS_LABEL[next],
+      onPress: () => {
+        if (isCorrectionTransition(item.status, next)) {
+          Alert.alert('訂正しますか？', `「${PERSONAL_STATUS_LABEL[item.status]}」から「${PERSONAL_STATUS_LABEL[next]}」に戻します`, [
+            { text: 'キャンセル', style: 'cancel' },
+            { text: '訂正する', style: 'destructive', onPress: () => setStatus(item.record.id, next) },
+          ]);
+          return;
+        }
+        setStatus(item.record.id, next);
+      },
+    }));
+
+    Alert.alert('ステータスを変更', `現在: ${PERSONAL_STATUS_LABEL[item.status]}`, [...buttons, { text: 'キャンセル', style: 'cancel' as const }]);
+  };
 
   return (
     <ScreenContainer>
@@ -75,16 +112,18 @@ export default function MyLotteriesScreen() {
       ) : (
         <FlatList
           data={filtered}
-          keyExtractor={(item) => String(item.id)}
+          keyExtractor={(item) => String(item.record.id)}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
             <PublicLotteryCard
-              record={item}
+              record={item.record}
               nowIso={nowIso}
-              onPress={() => router.push(`/lotteries/${item.id}`)}
+              onPress={() => router.push(`/lotteries/${item.record.id}`)}
               secondaryActionLabel="チェックリスト"
-              onSecondaryActionPress={() => router.push(`/checklist/${item.id}`)}
+              onSecondaryActionPress={() => router.push(`/checklist/${item.record.id}`)}
+              personalStatus={item.status}
+              onPersonalStatusPress={() => openStatusSheet(item)}
             />
           )}
         />

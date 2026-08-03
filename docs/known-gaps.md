@@ -43,3 +43,18 @@ G4-5準備にあたりユーザー承認済みの確定事項として記録す�
 - **同じApple Accountで新しいCardHubアカウントを作成し「購入を復元」を実行した場合、新しいアカウントへの権利移行を許可する**（Transfer Behavior: Transfer to new App User ID。RevenueCat/Appleの標準的な`restorePurchases()`挙動をそのまま採用し、CardHub側で復元を制限する実装は行わない）
 
 この方針により、10章（アカウント削除後の買い切り復元方針）の実装要否についても「新規実装不要、既存の`restorePurchases()`をそのまま使う」という結論を維持する。
+
+---
+
+## 統計機能: `skipped`ステータスの経路を区別できない（Mobile-G6、2026-08-03）
+
+`user_lotteries.status`の遷移ホワイトリスト（`services/lotteryStatusTransitions.ts`）上、`skipped`には2つの異なる経路がある。
+
+- `planned → skipped`: 応募自体を見送った（未応募のまま終わらせた）
+- `won → skipped`: 当選したが購入を見送った（購入見送り）
+
+現在の`user_lotteries.status`カラムは**直前の遷移元を保持しない**（現在値が`skipped`であるという事実のみ）。区別するには`user_lottery_status_history`テーブルの該当行を`userLotteryId`で引き、直前の`fromStatus`が`'won'`か`'planned'`かを確認する必要があるが、統計API（`GET /me/statistics/summary`ほか、`repositories/statisticsRepository.ts`）はこの追加参照を行っていない。
+
+**現状の扱い**: `skippedCount`は集計レスポンス上、区別のない単一の件数として返す（「応募見送り」「購入見送り」を合算した値）。当選率の分子・分母のどちらにも含めない（`docs/mobile-g1-...`10.4節に確定定義を記載）。
+
+**対応方針**: 現時点では対応しない。区別して表示する価値が出てきた場合（例: 「購入見送り率」を独立指標として出したい等）、`user_lottery_status_history`を`fromStatus='won'`で絞り込むクエリを追加する形で拡張可能。対応するタイミング・担当フェーズは未定。

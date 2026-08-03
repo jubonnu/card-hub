@@ -1,12 +1,4 @@
-import type {
-  CalendarEvent,
-  ChecklistGroup,
-  Lottery,
-  MonthlyStat,
-  NotificationToggleSettings,
-  ProductSummary,
-  ShopWinRate,
-} from '@/types/models';
+import type { CalendarEvent, ChecklistGroup, Lottery, NotificationToggleSettings, ProductSummary } from '@/types/models';
 
 export const lotteries: Lottery[] = [
   {
@@ -356,24 +348,6 @@ export const calendarEvents: CalendarEvent[] = [
     productName: 'ブラックボルト',
     shopName: 'ドラゴンスター',
   },
-];
-
-export const monthlyStats: MonthlyStat[] = [
-  { month: '2024-01', applied: 20, won: 2, purchased: 2 },
-  { month: '2024-02', applied: 24, won: 3, purchased: 3 },
-  { month: '2024-03', applied: 30, won: 5, purchased: 4 },
-  { month: '2024-04', applied: 34, won: 5, purchased: 5 },
-  { month: '2024-05', applied: 42, won: 8, purchased: 6 },
-];
-
-export const winRateTrend: number[] = [8, 9.5, 8.2, 11.5, 9.5, 16.5, 22, 15, 12.5, 17.5, 19.5, 20, 19];
-
-export const shopWinRates: ShopWinRate[] = [
-  { shopName: 'ドラゴンスター', winRate: 25.0 },
-  { shopName: 'ポケモンセンターオンライン', winRate: 22.2 },
-  { shopName: 'イオンスタイル', winRate: 20.0 },
-  { shopName: 'TSUTAYA', winRate: 16.7 },
-  { shopName: 'Joshin', winRate: 12.5 },
 ];
 
 export const defaultNotificationSettings: NotificationToggleSettings = {

@@ -37,7 +37,8 @@ export type AuthApiErrorKind =
   | 'auth_not_configured'
   | 'auth_provider_unavailable'
   | 'service_busy'
-  | 'internal';
+  | 'internal'
+  | 'premium_required';
 
 export class AuthApiError extends Error {
   kind: AuthApiErrorKind;
@@ -72,6 +73,7 @@ const CODE_TO_KIND: Record<AuthApiErrorCode, AuthApiErrorKind> = {
   AUTH_PROVIDER_UNAVAILABLE: 'auth_provider_unavailable',
   SERVICE_BUSY: 'service_busy',
   INTERNAL_ERROR: 'internal',
+  PREMIUM_REQUIRED: 'premium_required',
 };
 
 function parseRetryAfterHeader(response: Response): number | null {

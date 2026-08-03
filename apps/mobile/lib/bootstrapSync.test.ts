@@ -114,7 +114,7 @@ describe('bootstrapSync', () => {
 
   beforeEach(async () => {
     process.env.EXPO_PUBLIC_API_BASE_URL = 'https://api.example.test';
-    useMyLotteriesStore.setState({ saved: [{ record, savedAt: '2026-01-01T00:00:00.000Z' }] });
+    useMyLotteriesStore.setState({ saved: [{ record, savedAt: '2026-01-01T00:00:00.000Z', status: 'unknown' }] });
     useFavoritesStore.setState({ favoriteLotteryIds: [], followedProductKeys: ['pikachu-box'], followedProductIds: [] });
     useChecklistStore.setState({ groups: {} });
     useNotificationSettingsStore.setState({ ...defaultNotificationSettings, serverVersion: 0 });
@@ -269,7 +269,7 @@ describe('bootstrapSync: guest差分移行（Mobile-G4 Hardening）', () => {
 
   beforeEach(async () => {
     process.env.EXPO_PUBLIC_API_BASE_URL = 'https://api.example.test';
-    useMyLotteriesStore.setState({ saved: [{ record, savedAt: '2026-01-01T00:00:00.000Z' }] });
+    useMyLotteriesStore.setState({ saved: [{ record, savedAt: '2026-01-01T00:00:00.000Z', status: 'unknown' }] });
     useFavoritesStore.setState({ favoriteLotteryIds: [], followedProductKeys: [], followedProductIds: [] });
     useChecklistStore.setState({ groups: {} });
     useNotificationSettingsStore.setState({ ...defaultNotificationSettings, serverVersion: 0 });
@@ -555,7 +555,7 @@ describe('bootstrapSync: pending snapshotのアカウント間分離', () => {
 
   beforeEach(async () => {
     process.env.EXPO_PUBLIC_API_BASE_URL = 'https://api.example.test';
-    useMyLotteriesStore.setState({ saved: [{ record, savedAt: '2026-01-01T00:00:00.000Z' }] });
+    useMyLotteriesStore.setState({ saved: [{ record, savedAt: '2026-01-01T00:00:00.000Z', status: 'unknown' }] });
     useFavoritesStore.setState({ favoriteLotteryIds: [], followedProductKeys: [], followedProductIds: [] });
     useChecklistStore.setState({ groups: {} });
     useNotificationSettingsStore.setState({ ...defaultNotificationSettings, serverVersion: 0 });

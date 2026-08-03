@@ -762,6 +762,16 @@ unknown ──┬─→ planned ──┬─→ applied ──┬─→ won ─�
 - **キャッシュ方法**: サーバー計算結果を短時間（例: 5分)Cloudflare Cache APIまたはKVでキャッシュし、`user_lotteries`更新時に該当userIdのキャッシュを無効化
 - **原則**: premium統計はサーバー側集計を第一候補とし、モバイル側だけで改ざん可能な集計は行わない。課金状態（`subscription_entitlements`）を確認してから返す。架空のサンプル数値を実績のように表示しない（無料ユーザーへのプレビューでも同様、11章）。
 
+### 10.4 当選率の最終定義（Mobile-G6実装確定、2026-08-03）
+
+上表の「当選数 = `status IN ('won','purchased','skipped')`」は、`skipped`が`won`経由（購入見送り）と`planned`経由（応募見送り）の2経路を持つ実際の状態遷移ホワイトリスト（`services/lotteryStatusTransitions.ts`）と矛盾するため、実装時に以下へ確定した（`repositories/statisticsRepository.ts`）。
+
+- **分子**: `wonCount = COUNT(status='won') + COUNT(status='purchased')`。`purchased`は遷移ホワイトリスト上`won`からしか到達できないため、常に安全に合算できる
+- **分母**: `wonCount + lostCount`（`lostCount = COUNT(status='lost')`）。**`planned`・`skipped`・`unknown`・`applied`（結果未確定のもの）は分母に含めない**——「結果が確定したものだけ」を対象にするため
+- **`skipped`の扱い**: 分子・分母のどちらにも含めない。上表の「wonを経由した全て」という定義は採用しない（2経路を区別できないため）。`skippedCount`は集計レスポンス上の独立フィールドとして返すのみ（12章参照＝`docs/known-gaps.md`）
+- **0除算（分母=0）**: `winRate: null`を返す（「計算不可」）。`0%`とは表示しない
+- **`deletedAt`の扱い**: 18章で未確定だった論点（削除済みデータを含めるか）は、今回は`GET /me/lotteries`一覧と一貫させるため`deletedAt IS NULL`（現在保存中のもののみ）に確定した。削除済み実績を含める案は将来の再検討事項として残す
+
 ---
 
 ## 11. Premium統計画面設計

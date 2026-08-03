@@ -11,6 +11,12 @@ export type LotteryStatus =
 
 export type CalendarEventType = 'deadline' | 'announcement' | 'purchase';
 
+/**
+ * 個人ステータス（Mobile-G6）。上の`LotteryStatus`（公開抽選タイムラインのステータス）とは
+ * 別物——こちらはユーザーが「自分の抽選」に対して記録する応募・当選結果。
+ */
+export type PersonalLotteryStatus = 'unknown' | 'planned' | 'applied' | 'won' | 'lost' | 'purchased' | 'skipped';
+
 export interface ColorScheme {
   bg: string;
   surface: string;
@@ -43,6 +49,7 @@ export interface ColorScheme {
   danger: string;
   dangerBg: string;
   status: Record<LotteryStatus, { fg: string; bg: string; label: string }>;
+  personalStatus: Record<PersonalLotteryStatus, { fg: string; bg: string; label: string }>;
   event: Record<CalendarEventType, { color: string; label: string }>;
 }
 
@@ -56,6 +63,26 @@ const statusLight: ColorScheme['status'] = {
   lost: { fg: '#4B5158', bg: '#F0F1F3', label: '終了・落選' },
   expired: { fg: '#C62A20', bg: '#FDECEA', label: '期限切れ' },
   needsCheck: { fg: '#A66A00', bg: '#FBF3DF', label: '要確認' },
+};
+
+const personalStatusLight: ColorScheme['personalStatus'] = {
+  unknown: { fg: '#6B7280', bg: '#F0F1F3', label: '未設定' },
+  planned: { fg: '#C96A05', bg: '#FDF1E3', label: '応募予定' },
+  applied: { fg: '#2563C9', bg: '#E8F0FC', label: '応募済み' },
+  won: { fg: '#FFFFFF', bg: '#07733E', label: '当選' },
+  lost: { fg: '#4B5158', bg: '#F0F1F3', label: '落選' },
+  purchased: { fg: '#FFFFFF', bg: '#0A8F4D', label: '購入済み' },
+  skipped: { fg: '#6B7280', bg: '#F0F1F3', label: '見送り' },
+};
+
+const personalStatusDark: ColorScheme['personalStatus'] = {
+  unknown: { fg: '#8B9299', bg: '#22262B', label: '未設定' },
+  planned: { fg: '#E0A24A', bg: '#2E2210', label: '応募予定' },
+  applied: { fg: '#6C9FEE', bg: '#16233A', label: '応募済み' },
+  won: { fg: '#FFFFFF', bg: '#1F8F5C', label: '当選' },
+  lost: { fg: '#A7B1BB', bg: '#22262B', label: '落選' },
+  purchased: { fg: '#FFFFFF', bg: '#2FBE73', label: '購入済み' },
+  skipped: { fg: '#A7B1BB', bg: '#22262B', label: '見送り' },
 };
 
 const eventLight: ColorScheme['event'] = {
@@ -96,6 +123,7 @@ export const lightColors: ColorScheme = {
   danger: '#C62A20',
   dangerBg: '#FDECEA',
   status: statusLight,
+  personalStatus: personalStatusLight,
   event: eventLight,
 };
 
@@ -144,6 +172,7 @@ export const darkColors: ColorScheme = {
     expired: { fg: '#E5675E', bg: '#2E1613', label: '期限切れ' },
     needsCheck: { fg: '#E0A24A', bg: '#2E2210', label: '要確認' },
   },
+  personalStatus: personalStatusDark,
   event: {
     deadline: { color: '#E0A24A', label: '応募締切' },
     announcement: { color: '#A784EA', label: '当選発表' },
