@@ -49,24 +49,29 @@ export default function CalendarScreen() {
     <ScreenContainer style={{ backgroundColor: theme.colors.surface }}>
       <View style={styles.header}>
         <Text style={[styles.title, { color: theme.colors.textPrimary }]}>カレンダー</Text>
-        <Pressable onPress={goToToday} style={[styles.todayButton, { borderColor: theme.colors.green }]}>
-          <Text style={[styles.todayButtonText, { color: theme.colors.green }]}>今日へ戻る</Text>
-        </Pressable>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.monthRow}>
-          <Pressable style={styles.monthNav} onPress={() => changeMonth(-1)}>
-            <BackIcon size={18} color={theme.colors.textSecondary} strokeWidth={2.3} />
-          </Pressable>
-          <Text style={[styles.monthLabel, { color: theme.colors.textPrimary }]}>
-            {viewDate.getFullYear()}年{viewDate.getMonth() + 1}月
-          </Text>
-          <Pressable style={styles.monthNav} onPress={() => changeMonth(1)}>
-            <View style={{ transform: [{ scaleX: -1 }] }}>
+          <View style={styles.monthRowSide} />
+          <View style={styles.monthCenterGroup}>
+            <Pressable style={styles.monthNav} onPress={() => changeMonth(-1)}>
               <BackIcon size={18} color={theme.colors.textSecondary} strokeWidth={2.3} />
-            </View>
-          </Pressable>
+            </Pressable>
+            <Text style={[styles.monthLabel, { color: theme.colors.textPrimary }]}>
+              {viewDate.getFullYear()}年{viewDate.getMonth() + 1}月
+            </Text>
+            <Pressable style={styles.monthNav} onPress={() => changeMonth(1)}>
+              <View style={{ transform: [{ scaleX: -1 }] }}>
+                <BackIcon size={18} color={theme.colors.textSecondary} strokeWidth={2.3} />
+              </View>
+            </Pressable>
+          </View>
+          <View style={[styles.monthRowSide, styles.monthRowSideRight]}>
+            <Pressable onPress={goToToday} style={[styles.todayButton, { borderColor: theme.colors.green }]}>
+              <Text style={[styles.todayButtonText, { color: theme.colors.green }]}>今日へ戻る</Text>
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.weekdayRow}>
@@ -154,22 +159,34 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   todayButton: {
-    height: 36,
-    borderWidth: 1.4,
-    borderRadius: 9,
+    height: 26,
+    borderWidth: 1.1,
+    borderRadius: 7,
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 14,
+    paddingHorizontal: 8,
+    flexShrink: 0,
   },
   todayButtonText: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '700',
   },
   monthRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 20,
+    paddingHorizontal: 14,
     paddingBottom: 6,
+  },
+  monthRowSide: {
+    flex: 1,
+  },
+  monthRowSideRight: {
+    alignItems: 'flex-end',
+  },
+  monthCenterGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   monthNav: {
     width: 44,
