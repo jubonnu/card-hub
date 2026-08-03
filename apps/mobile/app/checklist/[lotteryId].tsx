@@ -118,10 +118,6 @@ export default function ChecklistScreen() {
           </Pressable>
         </View>
       </ScrollView>
-
-      <View style={styles.handleWrap}>
-        <View style={[styles.handle, { backgroundColor: theme.colors.thumbInner }]} />
-      </View>
     </ScreenContainer>
   );
 }
@@ -131,6 +127,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
+    paddingTop: 12,
     paddingBottom: 8,
   },
   iconButton: {
@@ -203,6 +200,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    paddingVertical: 14,
     minHeight: 56,
   },
   stepCheckDone: {
@@ -246,15 +244,5 @@ const styles = StyleSheet.create({
   addStepLabel: {
     fontSize: 14,
     fontWeight: '700',
-  },
-  handleWrap: {
-    height: 34,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  handle: {
-    width: 130,
-    height: 5,
-    borderRadius: 999,
   },
 });

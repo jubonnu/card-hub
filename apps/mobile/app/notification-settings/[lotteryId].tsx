@@ -91,7 +91,10 @@ export default function NotificationSettingsScreen() {
         <Pressable hitSlop={8} style={styles.iconButton} onPress={() => router.back()}>
           <BackIcon size={22} color={theme.colors.textPrimary} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>通知設定</Text>
+        <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+          通知設定
+        </Text>
+        <View style={styles.iconButton} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -182,10 +185,6 @@ export default function NotificationSettingsScreen() {
         onClose={() => setPickerVisible(false)}
         onConfirm={(start, end) => settings.setQuietHours(start, end)}
       />
-
-      <View style={styles.handleWrap}>
-        <View style={[styles.handle, { backgroundColor: theme.colors.thumbInner }]} />
-      </View>
     </ScreenContainer>
   );
 }
@@ -223,12 +222,13 @@ function ToggleRow({
         !last && { borderBottomWidth: 1, borderBottomColor: theme.colors.borderLighter },
       ]}
     >
-      {icon}
+      <View style={styles.rowIcon}>{icon}</View>
       <View style={styles.rowText}>
         <Text style={[styles.rowLabel, { color: theme.colors.textPrimary }]}>{label}</Text>
         <Text style={[styles.rowDescription, { color: theme.colors.textTertiary }]}>{description}</Text>
       </View>
       <Switch
+        style={styles.rowSwitch}
         value={value}
         onValueChange={onChange}
         trackColor={{ false: theme.colors.chipTrack, true: theme.colors.green }}
@@ -275,6 +275,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 14,
+    paddingTop: 12,
     paddingBottom: 8,
   },
   iconButton: {
@@ -284,15 +285,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
+    flex: 1,
     fontSize: 19,
     fontWeight: '900',
+    textAlign: 'center',
   },
   scrollContent: {
     paddingBottom: 40,
-    gap: 16,
+    gap: 24,
   },
   section: {
-    gap: 7,
+    gap: 9,
   },
   sectionTitle: {
     fontSize: 12,
@@ -307,11 +310,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     paddingHorizontal: 20,
+    paddingVertical: 14,
     minHeight: 56,
+  },
+  rowIcon: {
+    alignSelf: 'center',
   },
   rowText: {
     flex: 1,
-    gap: 2,
+    gap: 3,
   },
   rowLabel: {
     fontSize: 14,
@@ -319,12 +326,17 @@ const styles = StyleSheet.create({
   },
   rowDescription: {
     fontSize: 11,
+    lineHeight: 15,
+  },
+  rowSwitch: {
+    alignSelf: 'center',
   },
   valueRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     paddingHorizontal: 20,
+    paddingVertical: 15,
     minHeight: 52,
   },
   valueRowDisabled: {
@@ -338,15 +350,5 @@ const styles = StyleSheet.create({
   rowValue: {
     fontSize: 13,
     fontWeight: '700',
-  },
-  handleWrap: {
-    height: 34,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  handle: {
-    width: 130,
-    height: 5,
-    borderRadius: 999,
   },
 });
