@@ -129,7 +129,9 @@ export default function PaywallScreen() {
   return (
     <ScreenContainer padded style={{ backgroundColor: theme.colors.surface }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Text style={[styles.title, { color: theme.colors.textPrimary }]}>プレミアムプラン</Text>
+        <View style={styles.titleRow}>
+          <Text style={[styles.title, { color: theme.colors.textPrimary }]}>プレミアムプラン</Text>
+        </View>
 
         {state === 'notConfigured' && (
           <Text style={[styles.message, { color: theme.colors.textTertiary }]}>プレミアムプランは準備中です</Text>
@@ -222,11 +224,17 @@ export default function PaywallScreen() {
 const styles = StyleSheet.create({
   content: {
     gap: 20,
+    paddingTop: 12,
     paddingBottom: 40,
+  },
+  titleRow: {
+    minHeight: 44,
+    justifyContent: 'center',
   },
   title: {
     fontSize: 22,
     fontWeight: '900',
+    textAlign: 'center',
   },
   section: {
     gap: 14,
