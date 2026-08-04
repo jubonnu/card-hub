@@ -44,6 +44,7 @@ export function PrimaryButton({ label, onPress, icon, disabled, loading, size = 
 const styles = StyleSheet.create({
   button: {
     borderRadius: 12,
+    paddingHorizontal: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
