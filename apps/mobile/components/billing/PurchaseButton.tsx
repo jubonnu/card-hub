@@ -5,7 +5,6 @@ import { PrimaryButton } from '@/components/PrimaryButton';
 interface PurchaseButtonProps {
   label: string;
   pkg: PurchasesPackage | null | undefined;
-  loading: boolean;
   disabled: boolean;
   onPress: (pkg: PurchasesPackage) => void;
 }
@@ -15,10 +14,8 @@ interface PurchaseButtonProps {
  * 実際のローカライズ済み価格）のみを表示し、固定文字列をハードコードしない。
  * `pkg`が無い（Offeringに対象パッケージが設定されていない）場合は非表示にする。
  */
-export function PurchaseButton({ label, pkg, loading, disabled, onPress }: PurchaseButtonProps) {
+export function PurchaseButton({ label, pkg, disabled, onPress }: PurchaseButtonProps) {
   if (!pkg) return null;
 
-  return (
-    <PrimaryButton label={`${label}（${pkg.product.priceString}）`} loading={loading} disabled={disabled} onPress={() => onPress(pkg)} />
-  );
+  return <PrimaryButton label={`${label}（${pkg.product.priceString}）`} disabled={disabled} onPress={() => onPress(pkg)} />;
 }

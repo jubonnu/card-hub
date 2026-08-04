@@ -128,100 +128,110 @@ export default function PaywallScreen() {
 
   return (
     <ScreenContainer padded style={{ backgroundColor: theme.colors.surface }}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <View style={styles.titleRow}>
-          <Text style={[styles.title, { color: theme.colors.textPrimary }]}>プレミアムプラン</Text>
-        </View>
+      <View style={styles.flex}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+          <View style={styles.titleRow}>
+            <Text style={[styles.title, { color: theme.colors.textPrimary }]}>プレミアムプラン</Text>
+          </View>
 
-        {state === 'notConfigured' && (
-          <Text style={[styles.message, { color: theme.colors.textTertiary }]}>プレミアムプランは準備中です</Text>
-        )}
+          {state === 'notConfigured' && (
+            <Text style={[styles.message, { color: theme.colors.textTertiary }]}>プレミアムプランは準備中です</Text>
+          )}
 
-        {state === 'signedOut' && (
-          <View style={styles.section}>
+          {state === 'signedOut' && (
+            <View style={styles.section}>
+              <Text style={[styles.message, { color: theme.colors.textTertiary }]}>
+                プレミアムプランのご利用にはサインインが必要です
+              </Text>
+              <PrimaryButton label="サインイン" size="md" onPress={() => router.push('/sign-in' as Parameters<typeof router.push>[0])} />
+            </View>
+          )}
+
+          {state === 'loadingOfferings' && (
+            <View style={styles.section}>
+              <ActivityIndicator color={theme.colors.textPrimary} />
+            </View>
+          )}
+
+          {state === 'offlineCached' && (
             <Text style={[styles.message, { color: theme.colors.textTertiary }]}>
-              プレミアムプランのご利用にはサインインが必要です
+              オフラインのため最新の価格情報を取得できませんでした。通信状態を確認してもう一度お試しください
             </Text>
-            <PrimaryButton label="サインイン" size="md" onPress={() => router.push('/sign-in' as Parameters<typeof router.push>[0])} />
+          )}
+
+          {state === 'premium' && (
+            <View style={styles.section}>
+              <PremiumStatus productType={billing.productType} expiresAt={billing.expiresAt} verificationStatus={billing.verificationStatus} />
+              {billing.productType === 'subscription' && (
+                <PrimaryButton label="サブスクリプションを管理" size="md" onPress={() => void showManageSubscriptions()} />
+              )}
+            </View>
+          )}
+
+          {state === 'purchasePendingVerification' && (
+            <Text style={[styles.message, { color: theme.colors.textTertiary }]}>購入済み・確認中です…</Text>
+          )}
+
+          {state === 'serverVerificationFailed' && (
+            <View style={styles.section}>
+              <Text style={[styles.message, { color: theme.colors.warnText }]}>
+                購入済み・確認中に問題が発生しました。もう一度確認してください
+              </Text>
+              <PrimaryButton label="もう一度確認する" size="md" onPress={() => void verifyAfterPurchaseOrRestore()} />
+            </View>
+          )}
+
+          {state === 'cancelled' && (
+            <View style={styles.section}>
+              <Text style={[styles.message, { color: theme.colors.textTertiary }]}>購入をキャンセルしました</Text>
+              <PrimaryButton label="もう一度見る" size="md" onPress={() => setTransient('idle')} />
+            </View>
+          )}
+
+          {state === 'failed' && (
+            <View style={styles.section}>
+              <Text style={[styles.message, { color: theme.colors.danger }]}>{errorMessage ?? '処理に失敗しました'}</Text>
+              <PrimaryButton label="もう一度試す" size="md" onPress={() => setTransient('idle')} />
+            </View>
+          )}
+
+          {(state === 'ready' || state === 'purchasing' || state === 'restoring') && (
+            <View style={styles.section}>
+              <Text style={[styles.message, { color: theme.colors.textTertiary }]}>
+                月額プラン・買い切りプランのどちらでも同じプレミアム機能をご利用いただけます
+              </Text>
+              <PurchaseButton label="月額プラン" pkg={offering?.monthly} disabled={busy} onPress={handlePurchase} />
+              <PurchaseButton label="買い切りプラン" pkg={offering?.lifetime} disabled={busy} onPress={handlePurchase} />
+              <Text style={[styles.legalNote, { color: theme.colors.textFaint }]}>
+                月額プランは自動更新です。いつでもApple IDの設定から解約できます
+              </Text>
+              <RestorePurchasesButton disabled={busy} onPress={handleRestore} />
+              <Text style={[styles.legalNote, { color: theme.colors.textFaint }]}>
+                利用規約・プライバシーポリシーへのリンクは今後追加予定です
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+
+        {busy && (
+          <View style={styles.busyOverlay} pointerEvents="none">
+            <ActivityIndicator size="large" color={theme.colors.textPrimary} />
           </View>
         )}
-
-        {state === 'loadingOfferings' && (
-          <View style={styles.section}>
-            <ActivityIndicator color={theme.colors.textPrimary} />
-          </View>
-        )}
-
-        {state === 'offlineCached' && (
-          <Text style={[styles.message, { color: theme.colors.textTertiary }]}>
-            オフラインのため最新の価格情報を取得できませんでした。通信状態を確認してもう一度お試しください
-          </Text>
-        )}
-
-        {state === 'premium' && (
-          <View style={styles.section}>
-            <PremiumStatus productType={billing.productType} expiresAt={billing.expiresAt} verificationStatus={billing.verificationStatus} />
-            {billing.productType === 'subscription' && (
-              <PrimaryButton label="サブスクリプションを管理" size="md" onPress={() => void showManageSubscriptions()} />
-            )}
-          </View>
-        )}
-
-        {state === 'purchasePendingVerification' && (
-          <Text style={[styles.message, { color: theme.colors.textTertiary }]}>購入済み・確認中です…</Text>
-        )}
-
-        {state === 'serverVerificationFailed' && (
-          <View style={styles.section}>
-            <Text style={[styles.message, { color: theme.colors.warnText }]}>
-              購入済み・確認中に問題が発生しました。もう一度確認してください
-            </Text>
-            <PrimaryButton label="もう一度確認する" size="md" onPress={() => void verifyAfterPurchaseOrRestore()} />
-          </View>
-        )}
-
-        {state === 'cancelled' && (
-          <View style={styles.section}>
-            <Text style={[styles.message, { color: theme.colors.textTertiary }]}>購入をキャンセルしました</Text>
-            <PrimaryButton label="もう一度見る" size="md" onPress={() => setTransient('idle')} />
-          </View>
-        )}
-
-        {state === 'failed' && (
-          <View style={styles.section}>
-            <Text style={[styles.message, { color: theme.colors.danger }]}>{errorMessage ?? '処理に失敗しました'}</Text>
-            <PrimaryButton label="もう一度試す" size="md" onPress={() => setTransient('idle')} />
-          </View>
-        )}
-
-        {state === 'ready' && (
-          <View style={styles.section}>
-            <Text style={[styles.message, { color: theme.colors.textTertiary }]}>
-              月額プラン・買い切りプランのどちらでも同じプレミアム機能をご利用いただけます
-            </Text>
-            <PurchaseButton label="月額プラン" pkg={offering?.monthly} loading={transient === 'purchasing'} disabled={busy} onPress={handlePurchase} />
-            <PurchaseButton
-              label="買い切りプラン"
-              pkg={offering?.lifetime}
-              loading={transient === 'purchasing'}
-              disabled={busy}
-              onPress={handlePurchase}
-            />
-            <Text style={[styles.legalNote, { color: theme.colors.textFaint }]}>
-              月額プランは自動更新です。いつでもApple IDの設定から解約できます
-            </Text>
-            <RestorePurchasesButton loading={transient === 'restoring'} disabled={busy} onPress={handleRestore} />
-            <Text style={[styles.legalNote, { color: theme.colors.textFaint }]}>
-              利用規約・プライバシーポリシーへのリンクは今後追加予定です
-            </Text>
-          </View>
-        )}
-      </ScrollView>
+      </View>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
+  busyOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   content: {
     gap: 20,
     paddingTop: 12,
