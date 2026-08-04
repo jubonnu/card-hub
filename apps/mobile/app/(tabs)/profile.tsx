@@ -4,11 +4,15 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { useRouter } from 'expo-router';
 
 import {
+  BellIcon,
   ChartEmptyIcon,
   ChevronRightIcon,
-  ClockIcon,
   HeartIcon,
+  ListCheckIcon,
+  LogoutAllDevicesIcon,
+  LogoutIcon,
   PersonIcon,
+  TrashIcon,
 } from '@/components/icons';
 import { DataSyncStatusBanner } from '@/components/DataSyncStatusBanner';
 import { PrimaryButton } from '@/components/PrimaryButton';
@@ -195,7 +199,7 @@ export default function ProfileScreen() {
 
         <View style={[styles.menu, { borderTopColor: theme.colors.borderLight }]}>
           <MenuRow
-            icon={<ClockIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
+            icon={<ListCheckIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
             label="自分の抽選"
             onPress={() => router.push('/my-lotteries')}
           />
@@ -206,7 +210,7 @@ export default function ProfileScreen() {
             onPress={() => router.push('/following')}
           />
           <MenuRow
-            icon={<ClockIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
+            icon={<BellIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
             label="通知設定"
             onPress={() => router.push('/notification-settings/global')}
           />
@@ -224,19 +228,19 @@ export default function ProfileScreen() {
           {isSignedIn && (
             <>
               <MenuRow
-                icon={<ClockIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
+                icon={<LogoutIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
                 label="ログアウト"
                 onPress={handleSignOut}
                 loading={pendingAction === 'signOut'}
               />
               <MenuRow
-                icon={<ClockIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
+                icon={<LogoutAllDevicesIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
                 label="全端末からログアウト"
                 onPress={handleSignOutAllDevices}
                 loading={pendingAction === 'signOutAll'}
               />
               <MenuRow
-                icon={<ClockIcon size={20} color={theme.colors.danger} strokeWidth={1.9} />}
+                icon={<TrashIcon size={20} color={theme.colors.danger} strokeWidth={1.9} />}
                 label="アカウントを削除"
                 labelColor={theme.colors.danger}
                 onPress={handleDeleteAccount}

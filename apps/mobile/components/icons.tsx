@@ -25,6 +25,18 @@ export function ListIcon({ size = defaults.size, color = defaults.color, strokeW
   );
 }
 
+export function ListCheckIcon({ size = defaults.size, color = defaults.color, strokeWidth = 1.9 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Rect x={4} y={4} width={16} height={16} rx={3} />
+      <Path d="M7.2 9.3l1.1 1.1 1.9-2.1" />
+      <Path d="M12.5 9.3h4" />
+      <Path d="M7.2 14.7l1.1 1.1 1.9-2.1" />
+      <Path d="M12.5 14.7h4" />
+    </Svg>
+  );
+}
+
 export function CalendarIcon({ size = defaults.size, color = defaults.color, strokeWidth = 2.3 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round">
@@ -269,6 +281,38 @@ export function MoonIcon({ size = defaults.size, color = defaults.color, strokeW
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
       <Path d="M20 14.5A8 8 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" />
+    </Svg>
+  );
+}
+
+export function LogoutIcon({ size = defaults.size, color = defaults.color, strokeWidth = 1.9 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M12.5 4H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5.5" />
+      <Path d="M10.5 12h9.5" />
+      <Path d="M16.5 8.5 20 12l-3.5 3.5" />
+    </Svg>
+  );
+}
+
+export function LogoutAllDevicesIcon({ size = defaults.size, color = defaults.color, strokeWidth = 1.9 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Rect x={2.5} y={4} width={9} height={6.5} rx={1.4} />
+      <Rect x={6} y={12.5} width={9} height={6.5} rx={1.4} />
+      <Path d="M16 8.2h5.5" />
+      <Path d="M18.3 5.7 21.5 8.2l-3.2 2.5" />
+    </Svg>
+  );
+}
+
+export function TrashIcon({ size = defaults.size, color = defaults.color, strokeWidth = 1.9 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M5 7h14" />
+      <Path d="M9.5 7V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v2" />
+      <Path d="M7 7l1 12.5a2 2 0 0 0 2 1.8h4a2 2 0 0 0 2-1.8L17 7" />
+      <Path d="M10.3 11v6M13.7 11v6" />
     </Svg>
   );
 }
