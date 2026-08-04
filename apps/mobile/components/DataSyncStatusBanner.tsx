@@ -1,5 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { useAuthStore } from '@/stores/authStore';
 import { useOfflineQueueStore } from '@/stores/offlineQueueStore';
@@ -13,13 +12,13 @@ import { useTheme } from '@/theme/useTheme';
  * ゲストユーザーの唯一のデータ保護手段はApple Sign-Inによる同期のため）。
  * このバナーは「バックアップ」という言葉を使わず、現在の保護状態をそのまま伝える。
  *
- * ゲスト時: 端末内にしかデータが無いことを警告トーン（warn配色）で伝え、サインインへ誘導する。
+ * ゲスト時: 端末内にしかデータが無いことを警告トーン（warn配色）で伝える
+ * （サインイン導線は画面上部の既存ボタンが担うため、このバナー自体には持たせない）。
  * サインイン時: 同期済みであることを伝える（最終同期日時は追跡する仕組みが無いため、
  * 保留中の同期操作件数から導出した簡易な状態のみを表示する）。
  */
 export function DataSyncStatusBanner() {
   const theme = useTheme();
-  const router = useRouter();
   const { status, user } = useAuthStore();
   const operations = useOfflineQueueStore((s) => s.operations);
   const isSignedIn = status === 'signedIn' && user != null;
@@ -36,13 +35,6 @@ export function DataSyncStatusBanner() {
               アプリ削除や端末変更で失われる可能性があります
             </Text>
           </View>
-          <Pressable
-            hitSlop={8}
-            style={styles.actionButton}
-            onPress={() => router.push('/sign-in' as Parameters<typeof router.push>[0])}
-          >
-            <Text style={[styles.actionLabel, { color: theme.colors.warnText }]}>サインイン</Text>
-          </Pressable>
         </View>
       </View>
     );
@@ -72,12 +64,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   textWrap: {
-    flex: 1,
     gap: 3,
   },
   title: {
@@ -87,13 +76,5 @@ const styles = StyleSheet.create({
   message: {
     fontSize: 12,
     lineHeight: 17,
-  },
-  actionButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-  },
-  actionLabel: {
-    fontSize: 13,
-    fontWeight: '700',
   },
 });
