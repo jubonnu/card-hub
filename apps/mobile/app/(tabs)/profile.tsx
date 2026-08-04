@@ -4,6 +4,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { useRouter } from 'expo-router';
 
 import {
+  ChartEmptyIcon,
   ChevronRightIcon,
   ClockIcon,
   HeartIcon,
@@ -208,6 +209,11 @@ export default function ProfileScreen() {
             icon={<ClockIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
             label="通知設定"
             onPress={() => router.push('/notification-settings/global')}
+          />
+          <MenuRow
+            icon={<ChartEmptyIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
+            label="統計・分析"
+            onPress={() => router.push('/stats')}
           />
           <MenuRow
             icon={<HeartIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
