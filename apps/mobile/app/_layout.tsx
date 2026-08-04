@@ -9,9 +9,10 @@ import { registerCustomerInfoListener } from '@/lib/billingLifecycle';
 import { runDifferentialSync } from '@/lib/differentialSync';
 import { configureNotificationHandler } from '@/lib/notifications';
 import { processQueue } from '@/lib/offlineQueue';
-import { configurePurchases } from '@/lib/purchases';
+import { configurePurchases, getBillingStatus } from '@/lib/purchases';
 import { refreshAccessToken, shouldPreemptivelyRefresh } from '@/lib/tokenRefresh';
 import { useAuthStore } from '@/stores/authStore';
+import { useBillingStore } from '@/stores/billingStore';
 import { useTheme } from '@/theme/useTheme';
 
 export default function RootLayout() {
@@ -22,7 +23,11 @@ export default function RootLayout() {
 
     // RevenueCat SDKの初期化（Mobile-G4-1）。アプリ起動中に1回だけ呼ぶ。APIキー未設定でも
     // クラッシュしない（`lib/purchases.ts`が安全にnotConfigured状態を返す）。
+    // billingStoreへの反映はサインイン時（ensureRevenueCatLogin）以外にここでも行う。
+    // 未サインインのままだとCustomerInfoリスナーもensureRevenueCatLoginも発火せず、
+    // billingStoreがnotConfigured初期値のまま固まってしまうため。
     configurePurchases();
+    useBillingStore.getState().setBillingStatus(getBillingStatus());
     registerCustomerInfoListener();
 
     // 未ログインでも抽選一覧・詳細等の公開範囲は引き続き利用できるため、
