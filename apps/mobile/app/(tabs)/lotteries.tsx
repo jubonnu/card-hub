@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
-import { HeartIcon, SearchIcon } from '@/components/icons';
+import { CheckIcon, HeartIcon, SearchIcon } from '@/components/icons';
 import { PublicLotteryCard } from '@/components/PublicLotteryCard';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { SecondaryButton } from '@/components/SecondaryButton';
@@ -174,6 +174,7 @@ export default function LotteriesScreen() {
               nowIso={nowIso}
               onPress={() => router.push(`/lotteries/${item.id}`)}
               secondaryActionLabel="チェックリスト"
+              secondaryActionIcon={<CheckIcon size={13} color={theme.colors.green} />}
               onSecondaryActionPress={() => router.push(`/checklist/${item.id}`)}
             />
           )}

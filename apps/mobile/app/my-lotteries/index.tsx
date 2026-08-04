@@ -4,7 +4,7 @@ import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native
 
 import { DetailHeader } from '@/components/DetailHeader';
 import { EmptyState } from '@/components/EmptyState';
-import { HeartIcon } from '@/components/icons';
+import { CheckIcon, HeartIcon } from '@/components/icons';
 import { PublicLotteryCard } from '@/components/PublicLotteryCard';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { isCorrectionTransition, nextLotteryStatusOptions } from '@/lib/lotteryStatusTransitions';
@@ -116,6 +116,7 @@ export default function MyLotteriesScreen() {
               nowIso={nowIso}
               onPress={() => router.push(`/lotteries/${item.record.id}`)}
               secondaryActionLabel="チェックリスト"
+              secondaryActionIcon={<CheckIcon size={13} color={theme.colors.green} />}
               onSecondaryActionPress={() => router.push(`/checklist/${item.record.id}`)}
               personalStatus={item.status}
               onPersonalStatusPress={() => openStatusSheet(item)}

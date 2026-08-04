@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { LotteryRecord } from '@/schemas/lotteryApi';
@@ -23,6 +24,7 @@ interface PublicLotteryCardProps {
   nowIso: string;
   onPress?: () => void;
   secondaryActionLabel?: string;
+  secondaryActionIcon?: ReactNode;
   onSecondaryActionPress?: () => void;
   /** 個人ステータス（Mobile-G6、「自分の抽選」一覧でのみ使用）。渡すとタップでステータス変更操作を開始できる。 */
   personalStatus?: PersonalLotteryStatus;
@@ -41,6 +43,7 @@ export function PublicLotteryCard({
   nowIso,
   onPress,
   secondaryActionLabel,
+  secondaryActionIcon,
   onSecondaryActionPress,
   personalStatus,
   onPersonalStatusPress,
@@ -89,7 +92,7 @@ export function PublicLotteryCard({
         <View style={styles.secondaryActionRow}>
           {personalStatus ? <PersonalStatusBadge status={personalStatus} size="md" onPress={onPersonalStatusPress} /> : null}
           {secondaryActionLabel && onSecondaryActionPress ? (
-            <SecondaryButton label={secondaryActionLabel} size="sm" onPress={onSecondaryActionPress} />
+            <SecondaryButton label={secondaryActionLabel} icon={secondaryActionIcon} size="sm" onPress={onSecondaryActionPress} />
           ) : null}
         </View>
       ) : null}
