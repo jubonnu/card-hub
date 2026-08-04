@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { DetailHeader } from '@/components/DetailHeader';
 import { ErrorState } from '@/components/ErrorState';
@@ -69,13 +69,28 @@ function ApiLotteryDetailScreen({ id }: { id: number }) {
       ) : apiState.status === 'error' ? (
         <ErrorState onRetry={apiState.retry} {...getApiErrorCopy(apiState.error)} />
       ) : (
-        <ApiLotteryDetailBody record={apiState.data.lottery} nowIso={nowIso} />
+        <ApiLotteryDetailBody
+          record={apiState.data.lottery}
+          nowIso={nowIso}
+          refreshing={apiState.refreshing}
+          onRefresh={apiState.refresh}
+        />
       )}
     </ScreenContainer>
   );
 }
 
-function ApiLotteryDetailBody({ record, nowIso }: { record: LotteryRecord; nowIso: string }) {
+function ApiLotteryDetailBody({
+  record,
+  nowIso,
+  refreshing,
+  onRefresh,
+}: {
+  record: LotteryRecord;
+  nowIso: string;
+  refreshing: boolean;
+  onRefresh: () => Promise<void>;
+}) {
   const theme = useTheme();
   const router = useRouter();
   const { isSaved, saveLottery, removeLottery } = useMyLotteriesStore();
@@ -134,7 +149,18 @@ function ApiLotteryDetailBody({ record, nowIso }: { record: LotteryRecord; nowIs
 
   return (
     <>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void onRefresh()}
+            tintColor={theme.colors.green}
+            colors={[theme.colors.green]}
+          />
+        }
+      >
         <View style={styles.topRow}>
           <View style={styles.topRowLeft}>
             <PublicStatusBadge status={status} />

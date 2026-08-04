@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { EmptyState } from '@/components/EmptyState';
@@ -32,7 +32,7 @@ export default function LotteriesScreen() {
   const nowIso = useMemo(() => new Date().toISOString(), []);
 
   // 全国の抽選: GET /lotteries に接続（Phase Mobile-B）。「もっと見る」方式のページネーション（Phase Mobile-E）。
-  const { state: pageState, retry: retryInitial, loadMore } = usePaginatedLotteries(mode);
+  const { state: pageState, retry: retryInitial, loadMore, refresh, refreshing } = usePaginatedLotteries(mode);
 
   const filteredMine = useMemo(() => {
     let list = saved.map((s) => s.record);
@@ -185,6 +185,14 @@ export default function LotteriesScreen() {
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => void refresh()}
+              tintColor={theme.colors.green}
+              colors={[theme.colors.green]}
+            />
+          }
           renderItem={({ item }) => (
             <PublicLotteryCard record={item} nowIso={nowIso} onPress={() => router.push(`/lotteries/${item.id}`)} />
           )}

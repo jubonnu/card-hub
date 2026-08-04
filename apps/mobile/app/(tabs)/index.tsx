@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { EmptyState } from '@/components/EmptyState';
@@ -69,7 +69,18 @@ export default function HomeScreen() {
         <Text style={[styles.title, { color: theme.colors.textPrimary }]}>ホーム</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={newArrivalsState.refreshing}
+            onRefresh={() => void newArrivalsState.refresh()}
+            tintColor={theme.colors.green}
+            colors={[theme.colors.green]}
+          />
+        }
+      >
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
             <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>今日やること</Text>

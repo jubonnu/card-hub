@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Line, Polyline, Text as SvgText } from 'react-native-svg';
 
 import { AuthApiError } from '@/lib/authApiClient';
@@ -54,6 +54,7 @@ export default function StatsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
   const shouldFetch = authStatus === 'signedIn' && isPremium;
 
@@ -82,6 +83,30 @@ export default function StatsScreen() {
       cancelled = true;
     };
   }, [shouldFetch, reloadToken]);
+
+  /**
+   * pull-to-refresh用。上のuseEffect（初回・reloadToken駆動）とは独立に、表示中のグラフ・
+   * 実績を維持したまま裏で再取得する（loadingを立てないためスケルトンへ切り替わらない）。
+   * 失敗時は直前の表示データを保持する（ベストエフォート、エラー画面へは遷移しない）。
+   */
+  const refresh = useCallback(async () => {
+    if (!shouldFetch) return;
+    setRefreshing(true);
+    try {
+      const [summaryRes, monthlyRes, storesRes] = await Promise.all([
+        fetchStatisticsSummary(),
+        fetchStatisticsMonthly(MONTHLY_FETCH_MONTHS),
+        fetchStatisticsStores(5),
+      ]);
+      setSummary(summaryRes);
+      setMonthly(monthlyRes.items);
+      setStores(storesRes.items);
+    } catch {
+      // ベストエフォート。次回のアプリ復帰・手動retryで再試行される。
+    } finally {
+      setRefreshing(false);
+    }
+  }, [shouldFetch]);
 
   const state = deriveStatisticsScreenState({
     authStatus,
@@ -188,7 +213,18 @@ export default function StatsScreen() {
     <ScreenContainer>
       <DetailHeader title="統計・分析" />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void refresh()}
+            tintColor={theme.colors.green}
+            colors={[theme.colors.green]}
+          />
+        }
+      >
         <View style={[styles.periodSwitch, { backgroundColor: theme.colors.chipTrack }]}>
           {PERIODS.map((p) => (
             <Pressable

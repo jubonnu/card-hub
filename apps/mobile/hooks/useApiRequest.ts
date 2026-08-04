@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type ApiRequestState<T> =
   | { status: 'loading' }
@@ -18,9 +18,12 @@ export type ApiRequestState<T> =
 export function useApiRequest<T>(
   request: (signal: AbortSignal) => Promise<T>,
   deps: readonly unknown[]
-): ApiRequestState<T> & { retry: () => void } {
+): ApiRequestState<T> & { retry: () => void; refreshing: boolean; refresh: () => Promise<void> } {
   const [state, setState] = useState<ApiRequestState<T>>({ status: 'loading' });
   const [reloadToken, setReloadToken] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const requestRef = useRef(request);
+  requestRef.current = request;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -47,5 +50,24 @@ export function useApiRequest<T>(
 
   const retry = useCallback(() => setReloadToken((t) => t + 1), []);
 
-  return { ...state, retry };
+  /**
+   * pull-to-refresh用。上のuseEffect（deps/reloadToken駆動）とは独立に、現在表示中の
+   * データ・状態を維持したまま裏で再取得する（`retry`と違い`status`を'loading'へ戻さない
+   * ため、画面がスケルトン/空表示へ一瞬切り替わるチラつきが起きない）。
+   * 失敗時も直前の表示データをそのまま保持する（ベストエフォート、エラー画面へは遷移しない）。
+   */
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    const controller = new AbortController();
+    try {
+      const data = await requestRef.current(controller.signal);
+      setState({ status: 'success', data });
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return;
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
+  return { ...state, retry, refreshing, refresh };
 }

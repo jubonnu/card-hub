@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { DetailHeader } from '@/components/DetailHeader';
 import { ErrorState } from '@/components/ErrorState';
@@ -78,10 +78,20 @@ function ApiProductScreen({ productKey }: { productKey: string }) {
     );
   }
 
-  return <ApiProductBody group={group} nowIso={nowIso} />;
+  return <ApiProductBody group={group} nowIso={nowIso} refreshing={apiState.refreshing} onRefresh={apiState.refresh} />;
 }
 
-function ApiProductBody({ group, nowIso }: { group: PublicProductGroup; nowIso: string }) {
+function ApiProductBody({
+  group,
+  nowIso,
+  refreshing,
+  onRefresh,
+}: {
+  group: PublicProductGroup;
+  nowIso: string;
+  refreshing: boolean;
+  onRefresh: () => Promise<void>;
+}) {
   const theme = useTheme();
   const router = useRouter();
   const { isFollowingProduct, toggleFollowedProduct } = useFavoritesStore();
@@ -99,7 +109,17 @@ function ApiProductBody({ group, nowIso }: { group: PublicProductGroup; nowIso: 
     <ScreenContainer>
       <DetailHeader title="商品まとめ" right={<ShareIcon color={theme.colors.textPrimary} />} />
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void onRefresh()}
+            tintColor={theme.colors.green}
+            colors={[theme.colors.green]}
+          />
+        }
+      >
         <View style={styles.summaryRow}>
           <ProductThumb size="lg" />
           <View style={styles.summaryText}>

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { DetailHeader } from '@/components/DetailHeader';
 import { EmptyState } from '@/components/EmptyState';
@@ -76,6 +76,14 @@ export default function FollowingScreen() {
           keyExtractor={(item) => item.key}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={apiState.refreshing}
+              onRefresh={() => void apiState.refresh()}
+              tintColor={theme.colors.green}
+              colors={[theme.colors.green]}
+            />
+          }
           ListFooterComponent={
             mayBeIncomplete ? (
               <Text style={[styles.footNote, { color: theme.colors.textFaint }]}>

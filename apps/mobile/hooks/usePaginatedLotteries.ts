@@ -69,6 +69,39 @@ export function usePaginatedLotteries(resetKey: unknown) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
 
+  const [refreshing, setRefreshing] = useState(false);
+
+  /**
+   * pull-to-refresh用。`loadInitial`と違いstatusを'loading'へ戻さないため、既存の一覧を
+   * 表示したままFlatListのRefreshControlスピナーだけで再取得を表す。1ページ目から取り直し、
+   * ページングカーソルもリセットする。失敗時は直前の一覧を保持する（ベストエフォート）。
+   */
+  const refresh = useCallback(async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    loadingMoreRef.current = false;
+    setRefreshing(true);
+
+    try {
+      const res = await fetchLotteries({ limit: LOTTERIES_PAGE_SIZE }, controller.signal);
+      asOfRef.current = res.asOf;
+      nextCursorRef.current = res.nextCursor;
+      setState({
+        status: 'ready',
+        items: res.lotteries,
+        total: res.total,
+        hasMore: res.nextCursor !== null,
+        loadingMore: false,
+        loadMoreError: null,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return;
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
   const loadMore = useCallback(() => {
     if (loadingMoreRef.current) return;
     const cursor = nextCursorRef.current;
@@ -110,5 +143,5 @@ export function usePaginatedLotteries(resetKey: unknown) {
       });
   }, []);
 
-  return { state, retry: loadInitial, loadMore };
+  return { state, retry: loadInitial, loadMore, refresh, refreshing };
 }
