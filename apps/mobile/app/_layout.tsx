@@ -19,6 +19,7 @@ import { useTheme } from '@/theme/useTheme';
 // JSバンドルの評価～最初のレンダーの間に一瞬白画面が挟まらないよう、ネイティブスプラッシュを
 // 明示的に維持し、RootLayoutの初回マウント後に手動で閉じる（expo-splash-screenの標準パターン）。
 void SplashScreen.preventAutoHideAsync();
+SplashScreen.setOptions({ fade: true, duration: 300 });
 
 // ブランド表示として知覚できる最低限の表示時間（0.5〜0.8秒程度）を確保するための遅延。
 // JSバンドル評価が速い端末でも一瞬で消えてしまわないようにする。
