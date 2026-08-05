@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { restoreSession } from '@/lib/authActions';
@@ -15,10 +16,20 @@ import { useAuthStore } from '@/stores/authStore';
 import { useBillingStore } from '@/stores/billingStore';
 import { useTheme } from '@/theme/useTheme';
 
+// JSバンドルの評価～最初のレンダーの間に一瞬白画面が挟まらないよう、ネイティブスプラッシュを
+// 明示的に維持し、RootLayoutの初回マウント後に手動で閉じる（expo-splash-screenの標準パターン）。
+void SplashScreen.preventAutoHideAsync();
+
+// ブランド表示として知覚できる最低限の表示時間（0.5〜0.8秒程度）を確保するための遅延。
+// JSバンドル評価が速い端末でも一瞬で消えてしまわないようにする。
+const MIN_SPLASH_VISIBLE_MS = 650;
+
 export default function RootLayout() {
   const theme = useTheme();
 
   useEffect(() => {
+    const timer = setTimeout(() => void SplashScreen.hideAsync(), MIN_SPLASH_VISIBLE_MS);
+
     configureNotificationHandler();
 
     // RevenueCat SDKの初期化（Mobile-G4-1）。アプリ起動中に1回だけ呼ぶ。APIキー未設定でも
@@ -53,7 +64,10 @@ export default function RootLayout() {
       }
     });
 
-    return () => subscription.remove();
+    return () => {
+      clearTimeout(timer);
+      subscription.remove();
+    };
   }, []);
 
   return (

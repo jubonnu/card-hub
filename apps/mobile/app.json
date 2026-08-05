@@ -16,11 +16,6 @@
         "ITSAppUsesNonExemptEncryption": false
       }
     },
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#E6F4FE"
-    },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -49,7 +44,16 @@
       "expo-notifications",
       "expo-secure-store",
       "expo-apple-authentication",
-      "expo-dev-client"
+      "expo-dev-client",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "cover",
+          "backgroundColor": "#FAFAFA",
+          "enableFullScreenImage_legacy": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
