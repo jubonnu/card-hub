@@ -17,8 +17,9 @@
       }
     },
     "android": {
+      "package": "com.cardhub.mobile",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -41,7 +42,13 @@
           "calendarPermission": "カード抽選の応募締切・当選発表・購入期限をカレンダーに登録するために使用します"
         }
       ],
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#0A8F4D"
+        }
+      ],
       "expo-secure-store",
       "expo-apple-authentication",
       "expo-dev-client",
