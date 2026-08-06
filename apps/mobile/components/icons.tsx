@@ -316,3 +316,13 @@ export function TrashIcon({ size = defaults.size, color = defaults.color, stroke
     </Svg>
   );
 }
+
+export function LockIcon({ size = defaults.size, color = defaults.color, strokeWidth = 1.9 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Rect x={5} y={11} width={14} height={9.5} rx={2.2} />
+      <Path d="M8 11V7.5a4 4 0 0 1 8 0V11" />
+      <Path d="M12 14.8v2.4" />
+    </Svg>
+  );
+}

@@ -10,9 +10,11 @@ import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { isRevenueCatUserMatchingCurrentAuthUser } from '@/lib/billingLifecycle';
 import { isLocalEntitlementActive, localProductType } from '@/lib/entitlements';
+import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '@/lib/legalLinks';
 import { derivePaywallState, type PaywallTransient } from '@/lib/paywallState';
 import { getCurrentOffering, purchasePackage, restorePurchases, showManageSubscriptions } from '@/lib/purchases';
 import { postEntitlementsRefresh } from '@/lib/syncClient';
+import { openExternalUrl } from '@/lib/url';
 import { useAuthStore } from '@/stores/authStore';
 import { useBillingStore } from '@/stores/billingStore';
 import { useTheme } from '@/theme/useTheme';
@@ -203,11 +205,19 @@ export default function PaywallScreen() {
               <PurchaseButton label="月額プラン" pkg={offering?.monthly} disabled={busy} onPress={handlePurchase} />
               <PurchaseButton label="買い切りプラン" pkg={offering?.lifetime} disabled={busy} onPress={handlePurchase} />
               <Text style={[styles.legalNote, { color: theme.colors.textFaint }]}>
-                月額プランは自動更新です。いつでもApple IDの設定から解約できます
+                月額プランは自動更新のサブスクリプションです。解約しない限り自動的に更新され、現在の請求期間終了までは利用できます。解約はApple IDの「サブスクリプション」設定から行ってください（アプリの削除やアカウント削除だけでは解約されません）
               </Text>
               <RestorePurchasesButton disabled={busy} onPress={handleRestore} />
               <Text style={[styles.legalNote, { color: theme.colors.textFaint }]}>
-                利用規約・プライバシーポリシーへのリンクは今後追加予定です
+                購入手続きを行うと、
+                <Text style={{ color: theme.colors.green }} onPress={() => openExternalUrl(TERMS_OF_SERVICE_URL)}>
+                  利用規約
+                </Text>
+                および
+                <Text style={{ color: theme.colors.green }} onPress={() => openExternalUrl(PRIVACY_POLICY_URL)}>
+                  プライバシーポリシー
+                </Text>
+                に同意したものとみなされます
               </Text>
             </View>
           )}

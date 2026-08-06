@@ -8,7 +8,10 @@ import {
   ChartEmptyIcon,
   ChevronRightIcon,
   HeartIcon,
+  HelpIcon,
   ListCheckIcon,
+  ListIcon,
+  LockIcon,
   LogoutAllDevicesIcon,
   LogoutIcon,
   PersonIcon,
@@ -20,7 +23,9 @@ import { ScreenContainer } from '@/components/ScreenContainer';
 import { SyncConflictBanner } from '@/components/auth/SyncConflictBanner';
 import { deleteAccount, signOut, signOutAllDevices } from '@/lib/authActions';
 import { resolveDisplayName } from '@/lib/displayName';
+import { PRIVACY_POLICY_URL, SUPPORT_URL, TERMS_OF_SERVICE_URL } from '@/lib/legalLinks';
 import { fetchStatisticsMonthly } from '@/lib/statisticsClient';
+import { openExternalUrl } from '@/lib/url';
 import type { StatisticsMonthlyItem } from '@/schemas/statisticsApi';
 import { useBillingStore } from '@/stores/billingStore';
 import { useFavoritesStore } from '@/stores/favoritesStore';
@@ -223,6 +228,21 @@ export default function ProfileScreen() {
             icon={<HeartIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
             label="プレミアムプラン"
             onPress={() => router.push('/paywall')}
+          />
+          <MenuRow
+            icon={<ListIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
+            label="利用規約"
+            onPress={() => openExternalUrl(TERMS_OF_SERVICE_URL)}
+          />
+          <MenuRow
+            icon={<LockIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
+            label="プライバシーポリシー"
+            onPress={() => openExternalUrl(PRIVACY_POLICY_URL)}
+          />
+          <MenuRow
+            icon={<HelpIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
+            label="サポート"
+            onPress={() => openExternalUrl(SUPPORT_URL)}
             last={!isSignedIn}
           />
           {isSignedIn && (
