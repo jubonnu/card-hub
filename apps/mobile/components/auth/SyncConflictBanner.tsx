@@ -1,5 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { runDifferentialSync } from '@/lib/differentialSync';
+import { discardConflictedOperation } from '@/lib/offlineQueue';
 import { useSyncConflictsStore, type SyncConflictKind } from '@/lib/syncConflicts';
 import { useTheme } from '@/theme/useTheme';
 
@@ -22,6 +24,13 @@ export function SyncConflictBanner() {
 
   if (conflicts.length === 0) return null;
 
+  // 閉じる＝「この変更は諦める」という意思表示として扱い、宙に浮いたままのキュー内操作を
+  // 破棄した上で、対象データを最新のサーバー状態に揃え直す（`lib/offlineQueue.ts`参照）。
+  const handleDismiss = (id: string) => {
+    dismiss(id);
+    if (discardConflictedOperation(id)) void runDifferentialSync();
+  };
+
   return (
     <View style={styles.container}>
       {conflicts.map((conflict) => (
@@ -33,7 +42,7 @@ export function SyncConflictBanner() {
             <Text style={[styles.title, { color: theme.colors.warnText }]}>{TITLE_BY_KIND[conflict.kind]}</Text>
             <Text style={[styles.message, { color: theme.colors.warnTextSub }]}>{conflict.message}</Text>
           </View>
-          <Pressable hitSlop={8} onPress={() => dismiss(conflict.id)} style={styles.dismissButton}>
+          <Pressable hitSlop={8} onPress={() => handleDismiss(conflict.id)} style={styles.dismissButton}>
             <Text style={[styles.dismissLabel, { color: theme.colors.warnTextSub }]}>閉じる</Text>
           </Pressable>
         </View>

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { GUEST_NAMESPACE, useNamespaceStore } from '@/lib/accountNamespace';
 import {
+  discardConflictedOperation,
   enqueueOperation,
   hasUnsentOperations,
   OFFLINE_QUEUE_BACKOFF_MS,
@@ -319,6 +320,34 @@ describe('offlineQueue', () => {
     retryFailedOperation('op-1');
     await vi.waitFor(() => {
       expect(useOfflineQueueStore.getState().operations).toHaveLength(0);
+    });
+  });
+
+  describe('discardConflictedOperation', () => {
+    it('conflict:idプレフィックスの通知idから該当操作をキューから除去し、trueを返す', async () => {
+      global.fetch = vi.fn().mockResolvedValue(jsonResponse(409, { error: { code: 'VERSION_CONFLICT', message: '競合', requestId: 'r1' } }));
+      enqueueOperation({ id: 'op-1', kind: 'lottery.put', resourceKey: '1', path: '/me/lotteries/1', method: 'PUT', payload: {} });
+      await processQueue();
+      expect(useOfflineQueueStore.getState().operations[0].status).toBe('conflict');
+
+      const removed = discardConflictedOperation('queue:op-1');
+
+      expect(removed).toBe(true);
+      expect(useOfflineQueueStore.getState().operations).toHaveLength(0);
+    });
+
+    it('queue:プレフィックスでないid（bootstrapSummary等）は何もせずfalseを返す', () => {
+      enqueueOperation({ id: 'op-1', kind: 'favorite.put', resourceKey: '1', path: '/me/favorites/1', method: 'PUT', payload: {} });
+
+      const removed = discardConflictedOperation('bootstrap-summary-1');
+
+      expect(removed).toBe(false);
+      expect(useOfflineQueueStore.getState().operations).toHaveLength(1);
+    });
+
+    it('既に存在しない操作idの場合は何もせずfalseを返す', () => {
+      const removed = discardConflictedOperation('queue:does-not-exist');
+      expect(removed).toBe(false);
     });
   });
 });

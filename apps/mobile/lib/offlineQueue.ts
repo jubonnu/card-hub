@@ -203,3 +203,23 @@ export function retryFailedOperation(id: string): void {
   useOfflineQueueStore.getState().retryOperation(id);
   void processQueue();
 }
+
+const SYNC_CONFLICT_ID_PREFIX = 'queue:';
+
+/**
+ * 競合バナー（`SyncConflictBanner`）を閉じる際に呼ぶ。`status: 'conflict'`のまま止まった
+ * 操作は`processQueue`が二度と拾わず、`runDifferentialSync`も該当resourceKeyを
+ * 「未送信の変更あり」として永続的にサーバー値で上書きしない扱いにしてしまうため、
+ * このまま放置すると閉じた後もその抽選等の表示がサーバーの実際の値とズレたままになる。
+ * バナーを閉じる操作＝「この変更は諦める」という意思表示とみなし、宙に浮いた操作自体を
+ * 破棄する。呼び出し側（`SyncConflictBanner`）は戻り値がtrueなら`runDifferentialSync`を
+ * 呼び、対象resourceKeyを最新のサーバー状態に揃え直すこと。
+ */
+export function discardConflictedOperation(conflictId: string): boolean {
+  if (!conflictId.startsWith(SYNC_CONFLICT_ID_PREFIX)) return false;
+  const opId = conflictId.slice(SYNC_CONFLICT_ID_PREFIX.length);
+  const exists = useOfflineQueueStore.getState().operations.some((o) => o.id === opId);
+  if (!exists) return false;
+  useOfflineQueueStore.getState().remove(opId);
+  return true;
+}
