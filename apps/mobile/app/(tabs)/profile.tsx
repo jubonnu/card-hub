@@ -280,7 +280,9 @@ function StatItem({ label, value, color }: { label: string; value: string; color
   return (
     <View style={styles.statItem}>
       <Text style={[styles.statLabel, { color: theme.colors.darkCardText }]}>{label}</Text>
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
+      <Text style={[styles.statValue, { color }]} numberOfLines={1} adjustsFontSizeToFit>
+        {value}
+      </Text>
     </View>
   );
 }
