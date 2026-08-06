@@ -16,7 +16,7 @@ import { fetchLotteries, getApiErrorCopy } from '@/lib/apiClient';
 import type { LotteryRecord } from '@/schemas/lotteryApi';
 import { useFavoritesStore } from '@/stores/favoritesStore';
 import { useTheme } from '@/theme/useTheme';
-import { derivePublicTimelineStatus, getDisplayShopName, needsVerificationCaution } from '@/utils/publicLotteryDisplay';
+import { derivePublicTimelineStatus, formatAtOrDateOnly, getDisplayShopName, needsVerificationCaution } from '@/utils/publicLotteryDisplay';
 import { getCardTypeLabel, groupLotteriesByProduct, type PublicProductGroup } from '@/utils/publicProductDisplay';
 import { formatDateTimeShort, normalizeDeadline } from '@/utils/time';
 
@@ -150,8 +150,8 @@ function ApiProductBody({
         <View style={styles.shopList}>
           {sortedRecords.map((record, index) => {
             const status = derivePublicTimelineStatus(record, nowIso);
-            const deadline = record.applicationEndAt ?? record.applicationEndDate;
-            const announce = record.resultAnnouncementAt ?? record.resultAnnouncementDate;
+            const deadline = formatAtOrDateOnly(record.applicationEndAt, record.applicationEndDate);
+            const announce = formatAtOrDateOnly(record.resultAnnouncementAt, record.resultAnnouncementDate);
             return (
               <Pressable
                 key={record.id}
@@ -170,9 +170,9 @@ function ApiProductBody({
                   </Text>
                   <Text style={[styles.shopMeta, { color: theme.colors.textMuted }]}>
                     {deadline
-                      ? `応募締切　${formatDateTimeShort(deadline)}`
+                      ? `応募締切　${deadline}`
                       : announce
-                        ? `当選発表　${formatDateTimeShort(announce)}`
+                        ? `当選発表　${announce}`
                         : '締切・発表日は未公開です'}
                   </Text>
                 </View>

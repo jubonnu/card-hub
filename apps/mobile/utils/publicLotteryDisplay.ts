@@ -106,11 +106,11 @@ export function getHeaderMetaLine(record: LotteryRecord, nowIso: string): string
 }
 
 export function getBodyMetaLine(record: LotteryRecord): string {
-  const deadline = record.applicationEndAt ?? record.applicationEndDate;
-  if (deadline) return `応募締切　${formatDateTimeShort(deadline)}`;
+  const deadlineText = formatAtOrDateOnly(record.applicationEndAt, record.applicationEndDate);
+  if (deadlineText) return `応募締切　${deadlineText}`;
 
-  const announcement = record.resultAnnouncementAt ?? record.resultAnnouncementDate;
-  if (announcement) return `当選発表　${formatDateTimeShort(announcement)}`;
+  const announcementText = formatAtOrDateOnly(record.resultAnnouncementAt, record.resultAnnouncementDate);
+  if (announcementText) return `当選発表　${announcementText}`;
 
   return '締切・発表日は未公開です';
 }
@@ -143,8 +143,13 @@ function firstNonEmpty(...values: (string | null | undefined)[]): string | null 
   return null;
 }
 
-/** `_at`（時刻付き）があれば時刻ありで、`_date`（日付のみ）しか無ければ時刻なしでフォーマットする。 */
-function formatAtOrDateOnly(at: string | null, dateOnly: string | null): string | null {
+/**
+ * `_at`（時刻付き）があれば時刻ありで、`_date`（日付のみ）しか無ければ時刻なしでフォーマットする。
+ * `_date`のみの値を`new Date()`へ直接渡すと**UTC 0時**として解釈され、JST表示では実際には
+ * 存在しない時刻（例: 09:00）が表示されてしまう（`normalizeDeadline`のコメント参照）ため、
+ * 締切等の日時を画面表示する箇所は必ずこの関数を経由すること。
+ */
+export function formatAtOrDateOnly(at: string | null, dateOnly: string | null): string | null {
   if (at) return formatDateTimeShort(at);
   if (dateOnly) return formatMonthDayWeekday(dateOnly);
   return null;

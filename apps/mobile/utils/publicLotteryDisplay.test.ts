@@ -5,6 +5,8 @@ import {
   buildLotteryShareText,
   compareLotteriesByTimeline,
   derivePublicTimelineStatus,
+  formatAtOrDateOnly,
+  getBodyMetaLine,
   toLotteryShareInput,
   type LotteryShareInput,
 } from './publicLotteryDisplay';
@@ -58,6 +60,44 @@ function makeRecord(overrides: Partial<LotteryRecord> & { id: number }): Lottery
     ...overrides,
   };
 }
+
+describe('formatAtOrDateOnly', () => {
+  it('_at（時刻付き）があればJSTの日時をそのまま表示する', () => {
+    expect(formatAtOrDateOnly('2026-08-06T00:00:00.000Z', null)).toBe('8/6 (木) 09:00');
+  });
+
+  it('_date（日付のみ）しか無い場合は、実在しない時刻を作らず日付のみ表示する', () => {
+    // "2026-08-06"をnew Date()へ直接渡すとUTC 0時と解釈され、JST表示では実際のデータに
+    // 無い「09:00」という時刻が表示されてしまう不具合があった。日付のみを表示することで防ぐ。
+    expect(formatAtOrDateOnly(null, '2026-08-06')).toBe('8/6 (木)');
+  });
+
+  it('どちらも無ければnull', () => {
+    expect(formatAtOrDateOnly(null, null)).toBeNull();
+  });
+});
+
+describe('getBodyMetaLine', () => {
+  it('応募締切が日付のみの場合、実在しない時刻（例: 09:00）を表示しない', () => {
+    const record = makeRecord({ id: 1, applicationEndAt: null, applicationEndDate: '2026-08-06' });
+    expect(getBodyMetaLine(record)).toBe('応募締切　8/6 (木)');
+  });
+
+  it('応募締切に時刻がある場合はその時刻を表示する', () => {
+    const record = makeRecord({ id: 1, applicationEndAt: '2026-08-06T05:00:00.000Z', applicationEndDate: null });
+    expect(getBodyMetaLine(record)).toBe('応募締切　8/6 (木) 14:00');
+  });
+
+  it('応募締切が無く当選発表のみ日付ありの場合、当選発表を日付のみで表示する', () => {
+    const record = makeRecord({ id: 1, resultAnnouncementAt: null, resultAnnouncementDate: '2026-08-10' });
+    expect(getBodyMetaLine(record)).toBe('当選発表　8/10 (月)');
+  });
+
+  it('どちらも無ければ未公開メッセージ', () => {
+    const record = makeRecord({ id: 1 });
+    expect(getBodyMetaLine(record)).toBe('締切・発表日は未公開です');
+  });
+});
 
 describe('derivePublicTimelineStatus', () => {
   it('締切未設定はunknown', () => {

@@ -27,6 +27,7 @@ import { formatDateTimeShort, formatRemaining, isPast, normalizeDeadline } from 
 import {
   buildLotteryShareText,
   derivePublicTimelineStatus,
+  formatAtOrDateOnly,
   getDisplayProductName,
   getDisplayShopName,
   needsVerificationCaution,
@@ -201,20 +202,12 @@ function ApiLotteryDetailBody({
           <InfoRow
             dotColor={theme.colors.event.deadline.color}
             label="応募締切"
-            value={
-              record.applicationEndAt || record.applicationEndDate
-                ? formatDateTimeShort((record.applicationEndAt ?? record.applicationEndDate) as string)
-                : '未公開'
-            }
+            value={formatAtOrDateOnly(record.applicationEndAt, record.applicationEndDate) ?? '未公開'}
           />
           <InfoRow
             dotColor={theme.colors.event.announcement.color}
             label="当選発表"
-            value={
-              record.resultAnnouncementAt || record.resultAnnouncementDate
-                ? formatDateTimeShort((record.resultAnnouncementAt ?? record.resultAnnouncementDate) as string)
-                : '未公開'
-            }
+            value={formatAtOrDateOnly(record.resultAnnouncementAt, record.resultAnnouncementDate) ?? '未公開'}
           />
           <InfoRow
             dotColor={theme.colors.event.purchase.color}
