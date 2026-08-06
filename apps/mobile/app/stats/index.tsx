@@ -55,6 +55,25 @@ function buildSmoothAreaPath(points: { x: number; y: number }[], baselineY: numb
   return `${line} L ${last.x},${baselineY} L ${first.x},${baselineY} Z`;
 }
 
+/** "YYYY-MM" を「8月」形式に。直前のラベルと年が変わる場合のみ「26年8月」のように年を付ける。 */
+function formatMonthLabel(month: string, prevMonth: string | null): string {
+  const [year, m] = month.split('-');
+  const monthNum = Number(m);
+  const yearChanged = prevMonth === null || prevMonth.split('-')[0] !== year;
+  return yearChanged ? `${year.slice(2)}年${monthNum}月` : `${monthNum}月`;
+}
+
+/** 点数が多い場合、軸ラベルが重ならないよう間引いて表示するインデックスを選ぶ（先頭・末尾は必ず含む）。 */
+function pickLabelIndices(count: number, maxLabels = 6): number[] {
+  if (count <= maxLabels) return Array.from({ length: count }, (_, i) => i);
+  const step = (count - 1) / (maxLabels - 1);
+  const indices = new Set<number>();
+  for (let i = 0; i < maxLabels; i++) {
+    indices.add(Math.round(i * step));
+  }
+  return Array.from(indices).sort((a, b) => a - b);
+}
+
 function errorCopy(error: unknown): { title: string; description: string } {
   if (error instanceof AuthApiError && error.kind === 'network') {
     return { title: 'サーバーに接続できませんでした', description: '通信状況を確認して、もう一度読み込んでください' };
@@ -162,9 +181,30 @@ export default function StatsScreen() {
       const value = m.winRate !== null ? m.winRate * 100 : 0;
       const x = left + stepX * index;
       const y = bottom - (value / max) * (bottom - top);
-      return { x, y };
+      return { x, y, item: m };
     });
   }, [periodSlice]);
+
+  const chartLabelIndices = useMemo(() => new Set(pickLabelIndices(chartPoints.length)), [chartPoints.length]);
+
+  const [activeChartIndex, setActiveChartIndex] = useState<number | null>(null);
+
+  const handleChartTouch = useCallback(
+    (locationX: number) => {
+      if (chartPoints.length === 0) return;
+      let closest = 0;
+      let closestDist = Infinity;
+      chartPoints.forEach((p, index) => {
+        const dist = Math.abs(p.x - locationX);
+        if (dist < closestDist) {
+          closestDist = dist;
+          closest = index;
+        }
+      });
+      setActiveChartIndex(closest);
+    },
+    [chartPoints]
+  );
 
   if (state === 'signedOut') {
     return (
@@ -255,7 +295,10 @@ export default function StatsScreen() {
             <Pressable
               key={p}
               style={[styles.periodButton, period === p && { backgroundColor: theme.colors.green }]}
-              onPress={() => setPeriod(p)}
+              onPress={() => {
+                setPeriod(p);
+                setActiveChartIndex(null);
+              }}
             >
               <Text style={[styles.periodLabel, { color: period === p ? '#fff' : theme.colors.textSecondary }]}>
                 {p}
@@ -281,48 +324,114 @@ export default function StatsScreen() {
           ) : (
             <View style={[styles.chartCard, { borderColor: theme.colors.border }]}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <Svg width={CHART_WIDTH} height={CHART_HEIGHT} viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}>
-                  <Defs>
-                    <LinearGradient id="winRateAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                      <Stop offset="0" stopColor={theme.colors.green} stopOpacity={0.32} />
-                      <Stop offset="1" stopColor={theme.colors.green} stopOpacity={0} />
-                    </LinearGradient>
-                  </Defs>
-                  {[0, 25, 50, 75, 100].map((value) => {
-                    const y = 146 - (value / 100) * 126;
-                    return (
-                      <Line key={value} x1={34} y1={y} x2={CHART_WIDTH - 10} y2={y} stroke={theme.colors.borderLight} strokeWidth={1} />
-                    );
-                  })}
-                  {[0, 25, 50, 75, 100].map((value) => {
-                    const y = 146 - (value / 100) * 126;
-                    return (
-                      <SvgText key={value} x={4} y={y + 4} fontSize={10} fill={theme.colors.textMuted}>
-                        {value}%
-                      </SvgText>
-                    );
-                  })}
-                  <Path d={buildSmoothAreaPath(chartPoints, CHART_BASELINE_Y)} fill="url(#winRateAreaGradient)" stroke="none" />
-                  <Path
-                    d={buildSmoothLinePath(chartPoints)}
-                    fill="none"
-                    stroke={theme.colors.green}
-                    strokeWidth={2.6}
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                  />
-                  {chartPoints.map((p, index) => (
-                    <Circle
-                      key={index}
-                      cx={p.x}
-                      cy={p.y}
-                      r={index === chartPoints.length - 1 ? 4.8 : 3}
-                      fill={index === chartPoints.length - 1 ? theme.colors.green : theme.colors.surface}
-                      stroke={theme.colors.green}
-                      strokeWidth={2}
-                    />
-                  ))}
-                </Svg>
+                <View style={styles.chartInner}>
+                  <Pressable onPress={(e) => handleChartTouch(e.nativeEvent.locationX)}>
+                    <Svg width={CHART_WIDTH} height={CHART_HEIGHT} viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}>
+                      <Defs>
+                        <LinearGradient id="winRateAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                          <Stop offset="0" stopColor={theme.colors.green} stopOpacity={0.32} />
+                          <Stop offset="1" stopColor={theme.colors.green} stopOpacity={0} />
+                        </LinearGradient>
+                      </Defs>
+                      {[0, 25, 50, 75, 100].map((value) => {
+                        const y = 146 - (value / 100) * 126;
+                        return (
+                          <Line key={value} x1={34} y1={y} x2={CHART_WIDTH - 10} y2={y} stroke={theme.colors.borderLight} strokeWidth={1} />
+                        );
+                      })}
+                      {[0, 25, 50, 75, 100].map((value) => {
+                        const y = 146 - (value / 100) * 126;
+                        return (
+                          <SvgText key={value} x={4} y={y + 4} fontSize={10} fill={theme.colors.textMuted}>
+                            {value}%
+                          </SvgText>
+                        );
+                      })}
+                      <Path d={buildSmoothAreaPath(chartPoints, CHART_BASELINE_Y)} fill="url(#winRateAreaGradient)" stroke="none" />
+                      <Path
+                        d={buildSmoothLinePath(chartPoints)}
+                        fill="none"
+                        stroke={theme.colors.green}
+                        strokeWidth={2.6}
+                        strokeLinejoin="round"
+                        strokeLinecap="round"
+                      />
+                      {activeChartIndex !== null ? (
+                        <Line
+                          x1={chartPoints[activeChartIndex].x}
+                          y1={20}
+                          x2={chartPoints[activeChartIndex].x}
+                          y2={CHART_BASELINE_Y}
+                          stroke={theme.colors.green}
+                          strokeWidth={1}
+                          strokeDasharray="3,3"
+                        />
+                      ) : null}
+                      {chartPoints.map((p, index) => (
+                        <Circle
+                          key={index}
+                          cx={p.x}
+                          cy={p.y}
+                          r={index === activeChartIndex ? 5.5 : index === chartPoints.length - 1 ? 4.8 : 3}
+                          fill={
+                            index === activeChartIndex || index === chartPoints.length - 1
+                              ? theme.colors.green
+                              : theme.colors.surface
+                          }
+                          stroke={theme.colors.green}
+                          strokeWidth={2}
+                        />
+                      ))}
+                    </Svg>
+                  </Pressable>
+
+                  {activeChartIndex !== null ? (
+                    <View
+                      pointerEvents="none"
+                      style={[
+                        styles.chartTooltip,
+                        {
+                          borderColor: theme.colors.greenBorder,
+                          backgroundColor: theme.colors.surface,
+                          left: Math.min(Math.max(chartPoints[activeChartIndex].x - 55, 4), CHART_WIDTH - 114),
+                          top: Math.max(chartPoints[activeChartIndex].y - 66, 4),
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.chartTooltipMonth, { color: theme.colors.textPrimary }]}>
+                        {formatMonthLabel(chartPoints[activeChartIndex].item.month, null)}
+                      </Text>
+                      <Text style={[styles.chartTooltipRate, { color: theme.colors.green }]}>
+                        当選率{' '}
+                        {chartPoints[activeChartIndex].item.winRate !== null
+                          ? `${(chartPoints[activeChartIndex].item.winRate! * 100).toFixed(1)}%`
+                          : '計算不可'}
+                      </Text>
+                      <Text style={[styles.chartTooltipSub, { color: theme.colors.textTertiary }]}>
+                        当選 {chartPoints[activeChartIndex].item.wonCount} ・ 応募{' '}
+                        {chartPoints[activeChartIndex].item.appliedCount}
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  <View style={styles.chartAxisRow}>
+                    {chartPoints.map((p, index) =>
+                      chartLabelIndices.has(index) ? (
+                        <Text
+                          key={index}
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          style={[
+                            styles.chartAxisLabel,
+                            { color: theme.colors.textMuted, left: Math.min(Math.max(p.x - 24, 0), CHART_WIDTH - 48) },
+                          ]}
+                        >
+                          {formatMonthLabel(p.item.month, index > 0 ? chartPoints[index - 1].item.month : null)}
+                        </Text>
+                      ) : null
+                    )}
+                  </View>
+                </View>
               </ScrollView>
             </View>
           )}
@@ -441,6 +550,45 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 12,
     alignItems: 'center',
+  },
+  chartInner: {
+    width: CHART_WIDTH,
+  },
+  chartAxisRow: {
+    width: CHART_WIDTH,
+    height: 16,
+    marginTop: 2,
+  },
+  chartAxisLabel: {
+    position: 'absolute',
+    width: 48,
+    fontSize: 9,
+    textAlign: 'center',
+  },
+  chartTooltip: {
+    position: 'absolute',
+    width: 110,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    gap: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  chartTooltipMonth: {
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  chartTooltipRate: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  chartTooltipSub: {
+    fontSize: 10,
   },
   rankRow: {
     flexDirection: 'row',
