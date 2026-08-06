@@ -8,6 +8,7 @@ import { PublicLotteryCard } from '@/components/PublicLotteryCard';
 import { ProductThumb } from '@/components/ProductThumb';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { useApiRequest } from '@/hooks/useApiRequest';
+import { useNowIso } from '@/hooks/useNowIso';
 import { fetchLotteries } from '@/lib/apiClient';
 import { useMyLotteriesStore } from '@/stores/myLotteriesStore';
 import { useTheme } from '@/theme/useTheme';
@@ -21,7 +22,7 @@ const TODAYS_TASKS_DISPLAY_COUNT = 3;
 export default function HomeScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const nowIso = useMemo(() => new Date().toISOString(), []);
+  const nowIso = useNowIso();
   const { saved } = useMyLotteriesStore();
 
   // 「新着抽選」はAPIのcreatedAt降順で実データから求める（架空データは使わない）。

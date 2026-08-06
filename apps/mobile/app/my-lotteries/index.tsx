@@ -1,13 +1,16 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { DetailHeader } from '@/components/DetailHeader';
 import { EmptyState } from '@/components/EmptyState';
 import { CheckIcon, HeartIcon } from '@/components/icons';
 import { PublicLotteryCard } from '@/components/PublicLotteryCard';
 import { ScreenContainer } from '@/components/ScreenContainer';
+import { useNowIso } from '@/hooks/useNowIso';
+import { runDifferentialSync } from '@/lib/differentialSync';
 import { isCorrectionTransition, nextLotteryStatusOptions } from '@/lib/lotteryStatusTransitions';
+import { processQueue } from '@/lib/offlineQueue';
 import { useMyLotteriesStore, type SavedLottery } from '@/stores/myLotteriesStore';
 import type { PersonalLotteryStatus } from '@/theme/colors';
 import { useTheme } from '@/theme/useTheme';
@@ -37,7 +40,18 @@ export default function MyLotteriesScreen() {
   const router = useRouter();
   const { saved, setStatus } = useMyLotteriesStore();
   const [tab, setTab] = useState<TabKey>('all');
-  const nowIso = useMemo(() => new Date().toISOString(), []);
+  const [refreshing, setRefreshing] = useState(false);
+  const nowIso = useNowIso();
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await processQueue();
+      await runDifferentialSync();
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   const filtered = useMemo(() => {
     const byTab = tab === 'all' ? saved : saved.filter((s) => derivePublicTimelineStatus(s.record, nowIso) === tab);
@@ -110,6 +124,14 @@ export default function MyLotteriesScreen() {
           keyExtractor={(item) => String(item.record.id)}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => void handleRefresh()}
+              tintColor={theme.colors.green}
+              colors={[theme.colors.green]}
+            />
+          }
           renderItem={({ item }) => (
             <PublicLotteryCard
               record={item.record}

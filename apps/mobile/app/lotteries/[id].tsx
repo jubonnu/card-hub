@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -14,6 +13,7 @@ import { ShareLotteryButton } from '@/components/ShareLotteryButton';
 import { StatusBadge } from '@/components/StatusBadge';
 import { lotteries } from '@/data/mockData';
 import { useApiRequest } from '@/hooks/useApiRequest';
+import { useNowIso } from '@/hooks/useNowIso';
 import { fetchLotteryById, getApiErrorCopy } from '@/lib/apiClient';
 import { addEventsToCalendar, ensureCalendarPermission } from '@/lib/calendar';
 import { cancelLotteryReminders, ensureNotificationPermission, scheduleApiLotteryReminders } from '@/lib/notifications';
@@ -50,7 +50,7 @@ export default function LotteryDetailScreen() {
 
 function ApiLotteryDetailScreen({ id }: { id: number }) {
   const theme = useTheme();
-  const nowIso = useMemo(() => new Date().toISOString(), []);
+  const nowIso = useNowIso();
   const apiState = useApiRequest((signal) => fetchLotteryById(id, signal), [id]);
   const shareText =
     apiState.status === 'success' ? buildLotteryShareText(toLotteryShareInput(apiState.data.lottery)) : '';
@@ -268,7 +268,7 @@ function ApiLotteryDetailBody({
 
 function MockLotteryDetailScreen({ id }: { id: string }) {
   const theme = useTheme();
-  const nowIso = useMemo(() => new Date().toISOString(), []);
+  const nowIso = useNowIso();
   const lottery = lotteries.find((l) => l.id === id);
 
   if (!lottery) {

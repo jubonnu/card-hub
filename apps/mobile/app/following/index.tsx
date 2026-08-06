@@ -9,6 +9,7 @@ import { PersonIcon, StarIcon } from '@/components/icons';
 import { ProductThumb } from '@/components/ProductThumb';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { useApiRequest } from '@/hooks/useApiRequest';
+import { useNowIso } from '@/hooks/useNowIso';
 import { fetchLotteries, getApiErrorCopy } from '@/lib/apiClient';
 import { useFavoritesStore } from '@/stores/favoritesStore';
 import { useTheme } from '@/theme/useTheme';
@@ -26,7 +27,7 @@ export default function FollowingScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { followedProductKeys, toggleFollowedProduct } = useFavoritesStore();
-  const nowIso = useMemo(() => new Date().toISOString(), []);
+  const nowIso = useNowIso();
 
   const apiState = useApiRequest((signal) => fetchLotteries({ limit: FETCH_LIMIT }, signal), []);
 

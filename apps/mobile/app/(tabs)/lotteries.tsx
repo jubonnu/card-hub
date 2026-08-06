@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
@@ -9,8 +9,11 @@ import { PublicLotteryCard } from '@/components/PublicLotteryCard';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { SecondaryButton } from '@/components/SecondaryButton';
 import { SkeletonCard } from '@/components/SkeletonCard';
+import { useNowIso } from '@/hooks/useNowIso';
 import { usePaginatedLotteries } from '@/hooks/usePaginatedLotteries';
 import { getApiErrorCopy } from '@/lib/apiClient';
+import { runDifferentialSync } from '@/lib/differentialSync';
+import { processQueue } from '@/lib/offlineQueue';
 import { useFilterStore, type LotteryStatusTab } from '@/stores/filterStore';
 import { useMyLotteriesStore } from '@/stores/myLotteriesStore';
 import { useTheme } from '@/theme/useTheme';
@@ -29,10 +32,21 @@ export default function LotteriesScreen() {
   const { mode, setMode, statusTab, setStatusTab, searchQuery, setSearchQuery } = useFilterStore();
   const { saved } = useMyLotteriesStore();
 
-  const nowIso = useMemo(() => new Date().toISOString(), []);
+  const nowIso = useNowIso();
 
   // 全国の抽選: GET /lotteries に接続（Phase Mobile-B）。「もっと見る」方式のページネーション（Phase Mobile-E）。
   const { state: pageState, retry: retryInitial, loadMore, refresh, refreshing } = usePaginatedLotteries(mode);
+
+  const [mineRefreshing, setMineRefreshing] = useState(false);
+  async function handleMineRefresh() {
+    setMineRefreshing(true);
+    try {
+      await processQueue();
+      await runDifferentialSync();
+    } finally {
+      setMineRefreshing(false);
+    }
+  }
 
   const filteredMine = useMemo(() => {
     let list = saved.map((s) => s.record);
@@ -168,6 +182,14 @@ export default function LotteriesScreen() {
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={mineRefreshing}
+              onRefresh={() => void handleMineRefresh()}
+              tintColor={theme.colors.green}
+              colors={[theme.colors.green]}
+            />
+          }
           renderItem={({ item }) => (
             <PublicLotteryCard
               record={item}

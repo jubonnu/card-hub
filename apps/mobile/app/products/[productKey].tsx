@@ -11,6 +11,7 @@ import { ScreenContainer } from '@/components/ScreenContainer';
 import { StatusBadge } from '@/components/StatusBadge';
 import { lotteries, products } from '@/data/mockData';
 import { useApiRequest } from '@/hooks/useApiRequest';
+import { useNowIso } from '@/hooks/useNowIso';
 import { fetchLotteries, getApiErrorCopy } from '@/lib/apiClient';
 import type { LotteryRecord } from '@/schemas/lotteryApi';
 import { useFavoritesStore } from '@/stores/favoritesStore';
@@ -39,7 +40,7 @@ export default function ProductDetailScreen() {
 
 function ApiProductScreen({ productKey }: { productKey: string }) {
   const theme = useTheme();
-  const nowIso = useMemo(() => new Date().toISOString(), []);
+  const nowIso = useNowIso();
   const apiState = useApiRequest(() => fetchLotteries({ limit: 100 }), []);
 
   const group = useMemo(() => {
