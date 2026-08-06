@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Line, Polyline, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
 
 import { AuthApiError } from '@/lib/authApiClient';
 import { DetailHeader } from '@/components/DetailHeader';
@@ -29,6 +29,31 @@ const MONTHLY_FETCH_MONTHS = 12;
 
 const CHART_WIDTH = 326;
 const CHART_HEIGHT = 172;
+const CHART_BASELINE_Y = 146;
+
+/** 点列を通るなめらかな曲線のSVGパス（3次ベジェ、区間中点を制御点に使う簡易スプライン）を作る。 */
+function buildSmoothLinePath(points: { x: number; y: number }[]): string {
+  if (points.length === 0) return '';
+  if (points.length === 1) return `M ${points[0].x},${points[0].y}`;
+
+  let d = `M ${points[0].x},${points[0].y}`;
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1];
+    const curr = points[i];
+    const midX = (prev.x + curr.x) / 2;
+    d += ` C ${midX},${prev.y} ${midX},${curr.y} ${curr.x},${curr.y}`;
+  }
+  return d;
+}
+
+/** 上のなめらかな線を、下端（ベースライン）まで塗りつぶすエリアチャート用パスにする。 */
+function buildSmoothAreaPath(points: { x: number; y: number }[], baselineY: number): string {
+  if (points.length === 0) return '';
+  const line = buildSmoothLinePath(points);
+  const first = points[0];
+  const last = points[points.length - 1];
+  return `${line} L ${last.x},${baselineY} L ${first.x},${baselineY} Z`;
+}
 
 function errorCopy(error: unknown): { title: string; description: string } {
   if (error instanceof AuthApiError && error.kind === 'network') {
@@ -130,16 +155,16 @@ export default function StatsScreen() {
     const left = 34;
     const right = CHART_WIDTH - 10;
     const top = 20;
-    const bottom = 146;
-    if (monthly.length < 2) return [];
-    const stepX = (right - left) / (monthly.length - 1);
-    return monthly.map((m, index) => {
+    const bottom = CHART_BASELINE_Y;
+    if (periodSlice.length < 2) return [];
+    const stepX = (right - left) / (periodSlice.length - 1);
+    return periodSlice.map((m, index) => {
       const value = m.winRate !== null ? m.winRate * 100 : 0;
       const x = left + stepX * index;
       const y = bottom - (value / max) * (bottom - top);
       return { x, y };
     });
-  }, [monthly]);
+  }, [periodSlice]);
 
   if (state === 'signedOut') {
     return (
@@ -257,6 +282,12 @@ export default function StatsScreen() {
             <View style={[styles.chartCard, { borderColor: theme.colors.border }]}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <Svg width={CHART_WIDTH} height={CHART_HEIGHT} viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}>
+                  <Defs>
+                    <LinearGradient id="winRateAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                      <Stop offset="0" stopColor={theme.colors.green} stopOpacity={0.32} />
+                      <Stop offset="1" stopColor={theme.colors.green} stopOpacity={0} />
+                    </LinearGradient>
+                  </Defs>
                   {[0, 25, 50, 75, 100].map((value) => {
                     const y = 146 - (value / 100) * 126;
                     return (
@@ -271,11 +302,12 @@ export default function StatsScreen() {
                       </SvgText>
                     );
                   })}
-                  <Polyline
-                    points={chartPoints.map((p) => `${p.x},${p.y}`).join(' ')}
+                  <Path d={buildSmoothAreaPath(chartPoints, CHART_BASELINE_Y)} fill="url(#winRateAreaGradient)" stroke="none" />
+                  <Path
+                    d={buildSmoothLinePath(chartPoints)}
                     fill="none"
                     stroke={theme.colors.green}
-                    strokeWidth={2.4}
+                    strokeWidth={2.6}
                     strokeLinejoin="round"
                     strokeLinecap="round"
                   />
@@ -284,10 +316,10 @@ export default function StatsScreen() {
                       key={index}
                       cx={p.x}
                       cy={p.y}
-                      r={index === chartPoints.length - 1 ? 4.8 : 3.4}
+                      r={index === chartPoints.length - 1 ? 4.8 : 3}
                       fill={index === chartPoints.length - 1 ? theme.colors.green : theme.colors.surface}
                       stroke={theme.colors.green}
-                      strokeWidth={2.2}
+                      strokeWidth={2}
                     />
                   ))}
                 </Svg>
@@ -336,7 +368,11 @@ function StatCard({ label, value, highlight }: { label: string; value: string; h
       ]}
     >
       <Text style={[styles.statCardLabel, { color: theme.colors.textSecondary }]}>{label}</Text>
-      <Text style={[styles.statCardValue, { color: highlight ? theme.colors.green : theme.colors.textPrimary }]}>
+      <Text
+        style={[styles.statCardValue, { color: highlight ? theme.colors.green : theme.colors.textPrimary }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+      >
         {value}
       </Text>
     </View>
