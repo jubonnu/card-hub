@@ -11,6 +11,7 @@ export const statisticsSummaryResponseSchema = z.object({
   notAppliedCount: z.number(),
   wonCount: z.number(),
   lostCount: z.number(),
+  pendingResultCount: z.number(),
   purchasedCount: z.number(),
   skippedCount: z.number(),
   winRate: z.number().nullable(),
@@ -33,6 +34,7 @@ export const statisticsStoreItemSchema = z.object({
   appliedCount: z.number(),
   wonCount: z.number(),
   lostCount: z.number(),
+  pendingResultCount: z.number(),
   winRate: z.number(),
 });
 export const statisticsStoresResponseSchema = z.object({ items: z.array(statisticsStoreItemSchema) });
