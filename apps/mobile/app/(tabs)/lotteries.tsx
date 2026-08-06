@@ -9,6 +9,7 @@ import { PublicLotteryCard } from '@/components/PublicLotteryCard';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { SecondaryButton } from '@/components/SecondaryButton';
 import { SkeletonCard } from '@/components/SkeletonCard';
+import { useLotteryStatusSheet } from '@/hooks/useLotteryStatusSheet';
 import { useNowIso } from '@/hooks/useNowIso';
 import { usePaginatedLotteries } from '@/hooks/usePaginatedLotteries';
 import { getApiErrorCopy } from '@/lib/apiClient';
@@ -33,6 +34,7 @@ export default function LotteriesScreen() {
   const { saved } = useMyLotteriesStore();
 
   const nowIso = useNowIso();
+  const openStatusSheet = useLotteryStatusSheet();
 
   // 全国の抽選: GET /lotteries に接続（Phase Mobile-B）。「もっと見る」方式のページネーション（Phase Mobile-E）。
   const { state: pageState, retry: retryInitial, loadMore, refresh, refreshing } = usePaginatedLotteries(mode);
@@ -49,16 +51,16 @@ export default function LotteriesScreen() {
   }
 
   const filteredMine = useMemo(() => {
-    let list = saved.map((s) => s.record);
+    let list = saved;
 
     if (searchQuery.trim()) {
       const q = searchQuery.trim();
-      list = list.filter((r) => getDisplayProductName(r).includes(q) || getDisplayShopName(r).includes(q));
+      list = list.filter((s) => getDisplayProductName(s.record).includes(q) || getDisplayShopName(s.record).includes(q));
     }
     if (statusTab !== 'all') {
-      list = list.filter((r) => derivePublicTimelineStatus(r, nowIso) === statusTab);
+      list = list.filter((s) => derivePublicTimelineStatus(s.record, nowIso) === statusTab);
     }
-    return [...list].sort((a, b) => compareLotteriesByTimeline(a, b, nowIso));
+    return [...list].sort((a, b) => compareLotteriesByTimeline(a.record, b.record, nowIso));
   }, [saved, searchQuery, statusTab, nowIso]);
 
   // 並び順（受付中→結果待ち→終了済み→日時未設定）はサーバー側で確定済みのため、
@@ -179,7 +181,7 @@ export default function LotteriesScreen() {
       ) : mode === 'mine' ? (
         <FlatList
           data={filteredMine}
-          keyExtractor={(item) => String(item.id)}
+          keyExtractor={(item) => String(item.record.id)}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -192,12 +194,14 @@ export default function LotteriesScreen() {
           }
           renderItem={({ item }) => (
             <PublicLotteryCard
-              record={item}
+              record={item.record}
               nowIso={nowIso}
-              onPress={() => router.push(`/lotteries/${item.id}`)}
+              onPress={() => router.push(`/lotteries/${item.record.id}`)}
               secondaryActionLabel="チェックリスト"
               secondaryActionIcon={<CheckIcon size={13} color={theme.colors.green} />}
-              onSecondaryActionPress={() => router.push(`/checklist/${item.id}`)}
+              onSecondaryActionPress={() => router.push(`/checklist/${item.record.id}`)}
+              personalStatus={item.status}
+              onPersonalStatusPress={() => openStatusSheet(item)}
             />
           )}
         />

@@ -1,30 +1,19 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { DetailHeader } from '@/components/DetailHeader';
 import { EmptyState } from '@/components/EmptyState';
 import { CheckIcon, HeartIcon } from '@/components/icons';
 import { PublicLotteryCard } from '@/components/PublicLotteryCard';
 import { ScreenContainer } from '@/components/ScreenContainer';
+import { useLotteryStatusSheet } from '@/hooks/useLotteryStatusSheet';
 import { useNowIso } from '@/hooks/useNowIso';
 import { runDifferentialSync } from '@/lib/differentialSync';
-import { isCorrectionTransition, nextLotteryStatusOptions } from '@/lib/lotteryStatusTransitions';
 import { processQueue } from '@/lib/offlineQueue';
-import { useMyLotteriesStore, type SavedLottery } from '@/stores/myLotteriesStore';
-import type { PersonalLotteryStatus } from '@/theme/colors';
+import { useMyLotteriesStore } from '@/stores/myLotteriesStore';
 import { useTheme } from '@/theme/useTheme';
 import { compareLotteriesByTimeline, derivePublicTimelineStatus } from '@/utils/publicLotteryDisplay';
-
-const PERSONAL_STATUS_LABEL: Record<PersonalLotteryStatus, string> = {
-  unknown: '未設定',
-  planned: '応募予定',
-  applied: '応募済み',
-  won: '当選',
-  lost: '落選',
-  purchased: '購入済み',
-  skipped: '見送り',
-};
 
 const TABS = [
   { key: 'all', label: 'すべて' },
@@ -38,10 +27,11 @@ type TabKey = (typeof TABS)[number]['key'];
 export default function MyLotteriesScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const { saved, setStatus } = useMyLotteriesStore();
+  const { saved } = useMyLotteriesStore();
   const [tab, setTab] = useState<TabKey>('all');
   const [refreshing, setRefreshing] = useState(false);
   const nowIso = useNowIso();
+  const openStatusSheet = useLotteryStatusSheet();
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -57,32 +47,6 @@ export default function MyLotteriesScreen() {
     const byTab = tab === 'all' ? saved : saved.filter((s) => derivePublicTimelineStatus(s.record, nowIso) === tab);
     return [...byTab].sort((a, b) => compareLotteriesByTimeline(a.record, b.record, nowIso));
   }, [saved, tab, nowIso]);
-
-  const openStatusSheet = (item: SavedLottery) => {
-    if (item.serverVersion === undefined) {
-      Alert.alert('同期中です', 'この抽選の保存が完了してから、ステータスを変更できます');
-      return;
-    }
-
-    const options = nextLotteryStatusOptions(item.status);
-    if (options.length === 0) return;
-
-    const buttons = options.map((next) => ({
-      text: PERSONAL_STATUS_LABEL[next],
-      onPress: () => {
-        if (isCorrectionTransition(item.status, next)) {
-          Alert.alert('訂正しますか？', `「${PERSONAL_STATUS_LABEL[item.status]}」から「${PERSONAL_STATUS_LABEL[next]}」に戻します`, [
-            { text: 'キャンセル', style: 'cancel' },
-            { text: '訂正する', style: 'destructive', onPress: () => setStatus(item.record.id, next) },
-          ]);
-          return;
-        }
-        setStatus(item.record.id, next);
-      },
-    }));
-
-    Alert.alert('ステータスを変更', `現在: ${PERSONAL_STATUS_LABEL[item.status]}`, [...buttons, { text: 'キャンセル', style: 'cancel' as const }]);
-  };
 
   return (
     <ScreenContainer>
