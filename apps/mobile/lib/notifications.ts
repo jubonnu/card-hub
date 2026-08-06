@@ -27,6 +27,17 @@ export async function ensureNotificationPermission(): Promise<boolean> {
   return status === 'granted';
 }
 
+/**
+ * 通知タップ時のレスポンスから、遷移先の抽選ID（`/lotteries/[id]`にそのまま渡せる文字列）を
+ * 取り出す。スケジュール時に`content.data.lotteryId`を必ず設定しているため、
+ * 通知データが無い・想定外の形式の場合はnullを返す（不正なIDへの遷移は行わない）。
+ */
+export function extractLotteryIdFromNotification(response: Notifications.NotificationResponse): string | null {
+  const data = response.notification.request.content.data;
+  const lotteryId = data?.lotteryId;
+  return typeof lotteryId === 'string' && lotteryId.length > 0 ? lotteryId : null;
+}
+
 type ReminderKind = 'deadline' | 'announcement' | 'purchase';
 
 function identifierFor(lotteryId: string, kind: ReminderKind): string {
@@ -91,7 +102,7 @@ export async function scheduleLotteryReminders(
 
     await Notifications.scheduleNotificationAsync({
       identifier: identifierFor(lottery.id, job.kind),
-      content: { title: job.title, body: job.body },
+      content: { title: job.title, body: job.body, data: { lotteryId: lottery.id } },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(triggerTime) },
     });
   }
@@ -184,7 +195,7 @@ export async function scheduleApiLotteryReminders(
 
     await Notifications.scheduleNotificationAsync({
       identifier: identifierFor(lotteryId, job.kind),
-      content: { title: job.title, body: job.body },
+      content: { title: job.title, body: job.body, data: { lotteryId } },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(adjusted.triggerMs) },
     });
   }

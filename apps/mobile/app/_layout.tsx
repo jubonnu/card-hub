@@ -1,14 +1,15 @@
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { restoreSession } from '@/lib/authActions';
 import { registerCustomerInfoListener } from '@/lib/billingLifecycle';
 import { runDifferentialSync } from '@/lib/differentialSync';
-import { configureNotificationHandler } from '@/lib/notifications';
+import { configureNotificationHandler, extractLotteryIdFromNotification } from '@/lib/notifications';
 import { processQueue } from '@/lib/offlineQueue';
 import { configurePurchases, getBillingStatus } from '@/lib/purchases';
 import { refreshAccessToken, shouldPreemptivelyRefresh } from '@/lib/tokenRefresh';
@@ -27,11 +28,25 @@ const MIN_SPLASH_VISIBLE_MS = 650;
 
 export default function RootLayout() {
   const theme = useTheme();
+  const router = useRouter();
 
   useEffect(() => {
     const timer = setTimeout(() => void SplashScreen.hideAsync(), MIN_SPLASH_VISIBLE_MS);
 
     configureNotificationHandler();
+
+    // 通知タップで遷移する（`lib/notifications.ts`のスケジュール時に`data.lotteryId`を
+    // 必ず設定している）。アプリが完全終了状態からの起動（コールドスタート）はこの
+    // useEffect実行時点で既にタップ済みのため、addNotificationResponseReceivedListener
+    // だけでは拾えず、getLastNotificationResponseAsync()で別途確認する必要がある。
+    const navigateToLottery = (response: Notifications.NotificationResponse) => {
+      const lotteryId = extractLotteryIdFromNotification(response);
+      if (lotteryId) router.push(`/lotteries/${lotteryId}`);
+    };
+    void Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) navigateToLottery(response);
+    });
+    const notificationResponseSubscription = Notifications.addNotificationResponseReceivedListener(navigateToLottery);
 
     // RevenueCat SDKの初期化（Mobile-G4-1）。アプリ起動中に1回だけ呼ぶ。APIキー未設定でも
     // クラッシュしない（`lib/purchases.ts`が安全にnotConfigured状態を返す）。
@@ -68,7 +83,10 @@ export default function RootLayout() {
     return () => {
       clearTimeout(timer);
       subscription.remove();
+      notificationResponseSubscription.remove();
     };
+    // routerはexpo-routerが安定した参照を返すため、依存配列には含めない（マウント時に1回だけ実行する）。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
