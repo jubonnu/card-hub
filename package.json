@@ -9,6 +9,7 @@
     "mobile": "npm run start -w @cardhub/mobile",
     "mobile:typecheck": "npm run typecheck -w @cardhub/mobile",
     "mobile:lint": "npm run lint -w @cardhub/mobile",
+    "mobile:test": "npm run test -w @cardhub/mobile",
     "lint": "expo lint"
   }
 }
