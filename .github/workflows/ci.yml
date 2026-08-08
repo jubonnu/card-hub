@@ -13,6 +13,11 @@ concurrency:
 jobs:
   mobile:
     runs-on: ubuntu-latest
+    # アプリの日時表示（応募締切等）は端末のローカルタイムゾーンをJST前提で組んでおり、
+    # テストもその前提に依存している。GitHub Actionsランナーの既定TZ(UTC)のままだと
+    # 9時間ずれて多数のテストが失敗するため、実際の利用者（日本国内）に合わせて固定する。
+    env:
+      TZ: Asia/Tokyo
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
