@@ -178,7 +178,7 @@ function ApiLotteryDetailBody({
         </View>
 
         <View style={styles.productRow}>
-          <ProductThumb size="lg" />
+          <ProductThumb size="lg" imageUrl={record.imageUrl} />
           <View style={styles.productText}>
             <Text style={[styles.productName, { color: theme.colors.textPrimary }]}>
               {getDisplayProductName(record)}

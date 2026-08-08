@@ -44,7 +44,7 @@ export default function ChecklistScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {saved ? (
           <View style={[styles.summaryRow, { borderBottomColor: theme.colors.borderLighter }]}>
-            <ProductThumb size="md" />
+            <ProductThumb size="md" imageUrl={saved.record.imageUrl} />
             <View style={styles.summaryText}>
               <Text style={[styles.productName, { color: theme.colors.textPrimary }]}>
                 {getDisplayProductName(saved.record)}

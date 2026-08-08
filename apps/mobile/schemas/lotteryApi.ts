@@ -45,6 +45,9 @@ export const lotteryRecordSchema = z.object({
   officialInformationUrl: z.string().nullable(),
   appDownloadUrl: z.string().nullable(),
   applicationMethod: z.string().nullable(),
+  /** 管理画面（Phase 7）からアップロードされた商品画像URL。バックエンドの段階的ロールアウトに
+   * 耐えられるよう、フィールド自体が無いレスポンスも許容する（`.optional()`）。 */
+  imageUrl: z.string().nullable().optional(),
   eligibilityConditions: z.string().nullable(),
   pickupMethod: z.string().nullable(),
   paymentMethod: z.string().nullable(),

@@ -142,7 +142,7 @@ export default function HomeScreen() {
                   },
                 ]}
               >
-                <ProductThumb size="sm" />
+                <ProductThumb size="sm" imageUrl={record.imageUrl} />
                 <View style={styles.newRowText}>
                   <Text style={[styles.newRowName, { color: theme.colors.textPrimary }]} numberOfLines={1}>
                     {getDisplayProductName(record)}

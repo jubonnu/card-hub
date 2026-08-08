@@ -122,7 +122,7 @@ function ApiProductBody({
         }
       >
         <View style={styles.summaryRow}>
-          <ProductThumb size="lg" />
+          <ProductThumb size="lg" imageUrl={sortedRecords.find((r) => r.imageUrl)?.imageUrl} />
           <View style={styles.summaryText}>
             <View style={[styles.categoryChip, { backgroundColor: theme.colors.surfaceSubtle }]}>
               <Text style={[styles.categoryChipText, { color: theme.colors.textSecondary }]}>

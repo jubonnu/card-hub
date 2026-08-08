@@ -1,9 +1,11 @@
-import { StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 
 import { useTheme } from '@/theme/useTheme';
 
 interface ProductThumbProps {
   size?: 'sm' | 'md' | 'lg';
+  /** 管理画面からアップロードされた商品画像（Phase 7）。未設定ならプレースホルダーを表示する。 */
+  imageUrl?: string | null;
 }
 
 const SIZES = {
@@ -12,7 +14,7 @@ const SIZES = {
   lg: { width: 82, height: 106, inner: 38, radius: 9, innerRadius: 4 },
 };
 
-export function ProductThumb({ size = 'md' }: ProductThumbProps) {
+export function ProductThumb({ size = 'md', imageUrl }: ProductThumbProps) {
   const theme = useTheme();
   const dims = SIZES[size];
 
@@ -29,16 +31,24 @@ export function ProductThumb({ size = 'md' }: ProductThumbProps) {
         },
       ]}
     >
-      <View
-        style={{
-          width: dims.inner,
-          height: dims.inner * 1.4,
-          borderRadius: dims.innerRadius,
-          backgroundColor: theme.colors.surface,
-          borderWidth: 1,
-          borderColor: theme.colors.thumbInner,
-        }}
-      />
+      {imageUrl ? (
+        <Image
+          source={{ uri: imageUrl }}
+          style={{ width: dims.width - 2, height: dims.height - 2, borderRadius: dims.radius - 1 }}
+          resizeMode="cover"
+        />
+      ) : (
+        <View
+          style={{
+            width: dims.inner,
+            height: dims.inner * 1.4,
+            borderRadius: dims.innerRadius,
+            backgroundColor: theme.colors.surface,
+            borderWidth: 1,
+            borderColor: theme.colors.thumbInner,
+          }}
+        />
+      )}
     </View>
   );
 }

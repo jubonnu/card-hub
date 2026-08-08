@@ -97,7 +97,7 @@ export default function FollowingScreen() {
               style={[styles.row, { borderColor: theme.colors.border }]}
               onPress={() => router.push(`/products/${encodeURIComponent(item.key)}`)}
             >
-              <ProductThumb size="md" />
+              <ProductThumb size="md" imageUrl={item.records.find((r) => r.imageUrl)?.imageUrl} />
               <View style={styles.text}>
                 <Text style={[styles.name, { color: theme.colors.textPrimary }]} numberOfLines={1}>
                   {item.displayName}

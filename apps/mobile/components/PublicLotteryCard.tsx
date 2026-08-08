@@ -74,7 +74,7 @@ export function PublicLotteryCard({
         <Text style={[styles.headerLabel, { color: headerColor }]}>{headerLabel}</Text>
       </View>
       <View style={styles.bodyRow}>
-        <ProductThumb size="md" />
+        <ProductThumb size="md" imageUrl={record.imageUrl} />
         <View style={styles.bodyText}>
           <Text style={[styles.productName, { color: theme.colors.textPrimary }]} numberOfLines={1}>
             {getDisplayProductName(record)}
