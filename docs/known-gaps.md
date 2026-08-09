@@ -6,32 +6,29 @@
 
 ---
 
-## アカウント削除（`DELETE /me`）まわりの未実装
+## ～~アカウント削除（`DELETE /me`）まわりの未実装~～ → 解決済み（2026-08-08確認）
 
-2026-08-01、Mobile-G4シミュレーター動作確認中に発見。アカウント削除を実行→再起動→
-再ログインしたところ、`accountStatus: pending_deletion`・`scheduledDeletionAt`が
-維持されたまま通常ログインできてしまう挙動を確認した。調査の結果、これはバグではなく
-以下の機能が最初から未実装であることが原因と判明した。
+2026-08-01、Mobile-G4シミュレーター動作確認中に発見。当時は以下の4点が未実装だった。
 
-- **`pending_deletion`のキャンセル機能が未実装**: `accountDeletionRepository.ts`には
-  `requestAccountDeletion`のみ存在し、削除要求を取り消す関数が無い。`routes/auth.ts`の
-  `/auth/apple`ログイン処理も`accountStatus`・`scheduledDeletionAt`を一切見ておらず、
-  削除予約中でも素通りで通常ログインとして扱われる。
-- **`scheduledDeletionAt`到来後の削除バッチが未実装**: `src/db/schema.ts`の
-  `accountDeletionRequests`テーブル定義コメントに明記の通り、`DELETE /me`は
-  `pending_deletion`への状態遷移のみを行い、実際の物理削除を実行するバッチ処理は
-  G2Aの時点から意図的にスコープ外とされていた。現状、`scheduledDeletionAt`を過ぎても
-  何も削除されない。
-- **削除予約中ユーザーの再ログイン仕様が未確定**: 再ログインを「削除キャンセルの意思表示」
-  として扱うのか、明示的なキャンセル操作を別途必須にするのか、あるいはそもそも削除予約中は
-  ログイン自体を拒否すべきなのか、product判断が行われていない。
-- **RevenueCat entitlement・認証セッション・関連ユーザーデータの削除/匿名化方針が未確定**:
-  物理削除バッチを実装する際、`subscription_entitlements`・`revenuecat_events`・
-  Refresh Token・Apple関連の暗号化トークン等をどう扱うか（完全削除／匿名化／保持）の方針が
-  Mobile-G4時点でも決まっていない。
+- `pending_deletion`のキャンセル機能が無い
+- `scheduledDeletionAt`到来後の削除バッチが無い
+- 削除予約中ユーザーの再ログイン仕様が未確定
+- RevenueCat entitlement・認証セッション等の削除/匿名化方針が未確定
 
-**対応方針**: 現時点では対応しない。上記4点が解消されるまでは、削除要求後にユーザーが
-再ログインすると削除予約表示が残り続ける状態が続く。対応するタイミング・担当フェーズは未定。
+その後（x-post-fetcher側のコミット`a4928a5`「G2A残修正: アカウント猶予期間経過後の物理削除
+バッチとCron Trigger登録」）で全て実装済みであることを2026-08-08に確認した。
+
+- `routes/auth.ts`の再ログイン処理が`accountStatus === "pending_deletion"`を検出し、
+  `accountDeletionRepository.ts`の`cancelPendingAccountDeletion`で削除要求を取り消す
+  （プライバシーポリシー記載の「猶予期間中に再度サインインすると自動的に取り消される」通りの挙動）
+- `src/index.ts`の`scheduled`ハンドラ（1時間毎のCron Trigger、`wrangler.toml`で本番稼働中）が
+  `runAccountHardDeletionBatch`を呼び、猶予期間経過後のアカウントを物理削除する
+  （`hardDeleteUserAccount`: PII消去・認証情報物理削除・抽選等は論理削除・`audit_logs`のみ
+  userId参照を残したまま保持）
+- `tests/accountDeletionLifecycle.test.ts`（5テスト）で再ログインキャンセル・物理削除の
+  両方を検証済み
+
+**対応方針**: 解決済み。追加対応は不要。
 
 ### CardHubアカウント削除とApple購入の関係（確定仕様、2026-08-02）
 
@@ -46,15 +43,15 @@ G4-5準備にあたりユーザー承認済みの確定事項として記録す�
 
 ---
 
-## 統計機能: `skipped`ステータスの経路を区別できない（Mobile-G6、2026-08-03）
+## ～~統計機能: `skipped`ステータスの経路を区別できない~~ → 解決済み（2026-08-08対応）
 
 `user_lotteries.status`の遷移ホワイトリスト（`services/lotteryStatusTransitions.ts`）上、`skipped`には2つの異なる経路がある。
 
 - `planned → skipped`: 応募自体を見送った（未応募のまま終わらせた）
 - `won → skipped`: 当選したが購入を見送った（購入見送り）
 
-現在の`user_lotteries.status`カラムは**直前の遷移元を保持しない**（現在値が`skipped`であるという事実のみ）。区別するには`user_lottery_status_history`テーブルの該当行を`userLotteryId`で引き、直前の`fromStatus`が`'won'`か`'planned'`かを確認する必要があるが、統計API（`GET /me/statistics/summary`ほか、`repositories/statisticsRepository.ts`）はこの追加参照を行っていない。
+2026-08のMobile-G6統計API書き直し（lotteryId単位→応募試行単位の再構築、`services/lotteryAttempts.ts`）により、`skippedCount`は仕様上すでに「購入見送り」のみを指すようになっていた（応募を経由しない見送りは試行として記録されないため）。ただし「応募見送り」側の件数を独立して返すフィールドが無く、可視化できていなかった。
 
-**現状の扱い**: `skippedCount`は集計レスポンス上、区別のない単一の件数として返す（「応募見送り」「購入見送り」を合算した値）。当選率の分子・分母のどちらにも含めない（`docs/mobile-g1-...`10.4節に確定定義を記載）。
+**対応内容**: `statisticsRepository.ts`の`getStatisticsSummary`に`applicationSkippedCount`（現在ステータスが`skipped`かつ対応する応募試行が存在しない件数＝応募見送り）を追加し、`skippedCount`（購入見送り）と完全に分離して返すようにした。当選率の分子・分母どちらにも含めない扱いは従来通り。`tests/meStatistics.test.ts`にケースを追加して検証済み。
 
-**対応方針**: 現時点では対応しない。区別して表示する価値が出てきた場合（例: 「購入見送り率」を独立指標として出したい等）、`user_lottery_status_history`を`fromStatus='won'`で絞り込むクエリを追加する形で拡張可能。対応するタイミング・担当フェーズは未定。
+**対応方針**: 解決済み。モバイル側UIへの表示は`app/stats/index.tsx`に反映済み（見出し「見送り内訳」）。

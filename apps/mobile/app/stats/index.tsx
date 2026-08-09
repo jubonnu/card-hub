@@ -318,6 +318,14 @@ export default function StatsScreen() {
         </View>
 
         <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>見送り内訳</Text>
+          <View style={styles.statsGrid}>
+            <StatCard label="応募見送り" value={String(summary?.applicationSkippedCount ?? 0)} />
+            <StatCard label="購入見送り" value={String(summary?.skippedCount ?? 0)} />
+          </View>
+        </View>
+
+        <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>当選率の推移</Text>
           {chartPoints.length === 0 ? (
             <Text style={[styles.message, { color: theme.colors.textTertiary }]}>推移を表示するにはもう少しデータが必要です</Text>

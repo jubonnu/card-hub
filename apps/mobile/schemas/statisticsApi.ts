@@ -14,6 +14,7 @@ export const statisticsSummaryResponseSchema = z.object({
   pendingResultCount: z.number(),
   purchasedCount: z.number(),
   skippedCount: z.number(),
+  applicationSkippedCount: z.number(),
   winRate: z.number().nullable(),
 });
 export type StatisticsSummaryResponse = z.infer<typeof statisticsSummaryResponseSchema>;
