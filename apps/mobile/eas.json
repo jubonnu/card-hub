@@ -18,7 +18,11 @@
       "channel": "preview"
     },
     "production": {
+      "environment": "production",
       "channel": "production"
     }
+  },
+  "submit": {
+    "production": {}
   }
 }
