@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { DetailHeader } from '@/components/DetailHeader';
 import { ErrorState } from '@/components/ErrorState';
@@ -28,6 +28,7 @@ import {
   buildLotteryShareText,
   derivePublicTimelineStatus,
   formatAtOrDateOnly,
+  getApplicationUrls,
   getDisplayProductName,
   getDisplayShopName,
   needsVerificationCaution,
@@ -101,7 +102,8 @@ function ApiLotteryDetailBody({
   // isPast判定・カウントダウン・カレンダー登録に使う正規化済みの値（日付のみの場合はJST終端に補正）。
   const deadline = normalizeDeadline(record.applicationEndAt, record.applicationEndDate);
   const announce = normalizeDeadline(record.resultAnnouncementAt, record.resultAnnouncementDate);
-  const url = record.resolvedApplicationUrl ?? record.applicationUrl;
+  const urls = getApplicationUrls(record);
+  const url = urls[0] ?? null;
   const hasAnyDate = Boolean(deadline || announce || record.purchaseDeadlineAt);
   const productName = getDisplayProductName(record);
   const shopName = getDisplayShopName(record);
@@ -228,12 +230,22 @@ function ApiLotteryDetailBody({
 
         <View style={styles.urlSection}>
           <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>応募ページ</Text>
-          <View style={styles.urlRow}>
-            <Text style={[styles.urlText, { color: theme.colors.textPrimary }]} numberOfLines={1}>
-              {url ?? '応募ページ情報はまだありません'}
-            </Text>
-            {url ? <ExternalLinkIcon /> : null}
-          </View>
+          {urls.length > 0 ? (
+            urls.map((u, index) => (
+              <Pressable key={`${u}-${index}`} style={styles.urlRow} onPress={() => openExternalUrl(u)}>
+                <Text style={[styles.urlText, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+                  {u}
+                </Text>
+                <ExternalLinkIcon />
+              </Pressable>
+            ))
+          ) : (
+            <View style={styles.urlRow}>
+              <Text style={[styles.urlText, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+                応募ページ情報はまだありません
+              </Text>
+            </View>
+          )}
         </View>
 
       </ScrollView>

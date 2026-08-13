@@ -105,6 +105,19 @@ export function getHeaderMetaLine(record: LotteryRecord, nowIso: string): string
   return '詳細未定';
 }
 
+/**
+ * 応募ページURLの一覧を返す（複数指定（`applicationUrls`）があればそれを、無ければ
+ * 単一URL（`resolvedApplicationUrl`優先）を1件だけの配列で、どちらも無ければ空配列）。
+ * 空文字のURLは除外する。
+ */
+export function getApplicationUrls(record: LotteryRecord): string[] {
+  if (record.applicationUrls && record.applicationUrls.length > 0) {
+    return record.applicationUrls.map((u) => u.trim()).filter((u) => u.length > 0);
+  }
+  const single = firstNonEmpty(record.resolvedApplicationUrl, record.applicationUrl);
+  return single ? [single] : [];
+}
+
 export function getBodyMetaLine(record: LotteryRecord): string {
   const deadlineText = formatAtOrDateOnly(record.applicationEndAt, record.applicationEndDate);
   if (deadlineText) return `応募締切　${deadlineText}`;

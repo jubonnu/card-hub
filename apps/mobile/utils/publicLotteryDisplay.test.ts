@@ -6,6 +6,7 @@ import {
   compareLotteriesByTimeline,
   derivePublicTimelineStatus,
   formatAtOrDateOnly,
+  getApplicationUrls,
   getBodyMetaLine,
   toLotteryShareInput,
   type LotteryShareInput,
@@ -96,6 +97,42 @@ describe('getBodyMetaLine', () => {
   it('どちらも無ければ未公開メッセージ', () => {
     const record = makeRecord({ id: 1 });
     expect(getBodyMetaLine(record)).toBe('締切・発表日は未公開です');
+  });
+});
+
+describe('getApplicationUrls', () => {
+  it('applicationUrlsが複数あればその配列をそのまま返す', () => {
+    const record = makeRecord({
+      id: 1,
+      applicationUrls: ['https://example.com/a', 'https://example.com/b', 'https://example.com/c'],
+    });
+    expect(getApplicationUrls(record)).toEqual(['https://example.com/a', 'https://example.com/b', 'https://example.com/c']);
+  });
+
+  it('applicationUrlsが空配列/nullで、単一URLのみあれば1件配列で返す（resolvedApplicationUrl優先）', () => {
+    const record = makeRecord({
+      id: 1,
+      applicationUrls: null,
+      resolvedApplicationUrl: 'https://example.com/resolved',
+      applicationUrl: 'https://example.com/original',
+    });
+    expect(getApplicationUrls(record)).toEqual(['https://example.com/resolved']);
+  });
+
+  it('applicationUrlsが未設定（フィールド自体が無い）でも単一URLへフォールバックする', () => {
+    const record = makeRecord({ id: 1, applicationUrl: 'https://example.com/apply' });
+    delete (record as { applicationUrls?: string[] | null }).applicationUrls;
+    expect(getApplicationUrls(record)).toEqual(['https://example.com/apply']);
+  });
+
+  it('どのURLも無ければ空配列', () => {
+    const record = makeRecord({ id: 1 });
+    expect(getApplicationUrls(record)).toEqual([]);
+  });
+
+  it('空文字のURLは除外される', () => {
+    const record = makeRecord({ id: 1, applicationUrls: ['https://example.com/a', '', '  '] });
+    expect(getApplicationUrls(record)).toEqual(['https://example.com/a']);
   });
 });
 

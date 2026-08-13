@@ -39,6 +39,9 @@ export const lotteryRecordSchema = z.object({
   purchaseStartAt: z.string().nullable(),
   purchaseDeadlineAt: z.string().nullable(),
   applicationUrl: z.string().nullable(),
+  /** 応募ページURLの複数指定。1件目はapplicationUrlと同じ値（x-post-fetcher Phase 9）。
+   * バックエンドの段階的ロールアウトに耐えられるよう、フィールド自体が無いレスポンスも許容する。 */
+  applicationUrls: z.array(z.string()).nullable().optional(),
   resolvedApplicationUrl: z.string().nullable(),
   applicationUrlHttpStatus: z.number().nullable(),
   urlResolvedAt: z.string().nullable(),
