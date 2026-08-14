@@ -33,6 +33,9 @@ export const lotteryRecordSchema = z.object({
   applicationEndAt: z.string().nullable(),
   applicationEndDate: z.string().nullable(),
   applicationEndPrecision: z.string().nullable(),
+  /** 当選発表開始日時（「A〜B」範囲表記の開始側。x-post-fetcher Phase 10）。
+   * バックエンドの段階的ロールアウトに耐えられるよう、フィールド自体が無いレスポンスも許容する。 */
+  resultAnnouncementStartAt: z.string().nullable().optional(),
   resultAnnouncementAt: z.string().nullable(),
   resultAnnouncementDate: z.string().nullable(),
   resultAnnouncementPrecision: z.string().nullable(),

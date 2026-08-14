@@ -168,6 +168,24 @@ export function formatAtOrDateOnly(at: string | null, dateOnly: string | null): 
   return null;
 }
 
+/**
+ * 開始日時があれば「開始 〜 終了」、無ければ従来通り終了側のみを表示する
+ * （「A〜B」のような期間表記の投稿に対応、x-post-fetcher Phase 10）。
+ * 開始・終了が同一表示になる場合（同日同時刻等）は終了側のみを表示する。
+ */
+export function formatDateRangeOrSingle(
+  startAt: string | null | undefined,
+  endAt: string | null,
+  endDateOnly: string | null
+): string | null {
+  const endText = formatAtOrDateOnly(endAt, endDateOnly);
+  if (!endText) return null;
+  if (!startAt) return endText;
+  const startText = formatDateTimeShort(startAt);
+  if (!startText || startText === endText) return endText;
+  return `${startText} 〜 ${endText}`;
+}
+
 /** 実データ（`LotteryRecord`）を共有用ViewModelへ変換する。resolvedApplicationUrlを優先し、空文字は無視する。 */
 export function toLotteryShareInput(record: LotteryRecord): LotteryShareInput {
   return {

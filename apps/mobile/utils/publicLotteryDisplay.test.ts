@@ -6,6 +6,7 @@ import {
   compareLotteriesByTimeline,
   derivePublicTimelineStatus,
   formatAtOrDateOnly,
+  formatDateRangeOrSingle,
   getApplicationUrls,
   getBodyMetaLine,
   toLotteryShareInput,
@@ -75,6 +76,34 @@ describe('formatAtOrDateOnly', () => {
 
   it('どちらも無ければnull', () => {
     expect(formatAtOrDateOnly(null, null)).toBeNull();
+  });
+});
+
+describe('formatDateRangeOrSingle', () => {
+  it('開始日時があれば「開始 〜 終了」形式で表示する', () => {
+    expect(formatDateRangeOrSingle('2026-08-11T05:00:00.000Z', '2026-08-13T14:59:00.000Z', null)).toBe(
+      '8/11 (火) 14:00 〜 8/13 (木) 23:59'
+    );
+  });
+
+  it('開始日時が無ければ終了側のみ表示する（従来通り）', () => {
+    expect(formatDateRangeOrSingle(null, '2026-08-13T14:59:00.000Z', null)).toBe('8/13 (木) 23:59');
+  });
+
+  it('終了側が日付のみ（_at無し）でも動作する', () => {
+    expect(formatDateRangeOrSingle('2026-08-11T05:00:00.000Z', null, '2026-08-13')).toBe('8/11 (火) 14:00 〜 8/13 (木)');
+  });
+
+  it('開始・終了の表示が同じになる場合は終了側のみ表示する（重複表示を避ける）', () => {
+    expect(formatDateRangeOrSingle('2026-08-13T14:59:00.000Z', '2026-08-13T14:59:00.000Z', null)).toBe('8/13 (木) 23:59');
+  });
+
+  it('終了側が無ければnull（開始日時があっても）', () => {
+    expect(formatDateRangeOrSingle('2026-08-11T05:00:00.000Z', null, null)).toBeNull();
+  });
+
+  it('開始日時がundefined（フィールド自体が無いレスポンス）でも動作する', () => {
+    expect(formatDateRangeOrSingle(undefined, '2026-08-13T14:59:00.000Z', null)).toBe('8/13 (木) 23:59');
   });
 });
 
