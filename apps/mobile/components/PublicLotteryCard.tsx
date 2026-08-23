@@ -10,13 +10,12 @@ import {
   getDisplayProductName,
   getDisplayShopName,
   getHeaderMetaLine,
-  needsVerificationCaution,
 } from '@/utils/publicLotteryDisplay';
 
 import { ChevronRightIcon } from './icons';
 import { PersonalStatusBadge } from './PersonalStatusBadge';
 import { ProductThumb } from './ProductThumb';
-import { PublicStatusBadge, VerificationCautionBadge } from './PublicStatusBadge';
+import { PublicStatusBadge } from './PublicStatusBadge';
 import { SecondaryButton } from './SecondaryButton';
 
 interface PublicLotteryCardProps {
@@ -52,7 +51,6 @@ export function PublicLotteryCard({
   const status = derivePublicTimelineStatus(record, nowIso);
   const headerLabel = getHeaderMetaLine(record, nowIso);
   const bodyLine = getBodyMetaLine(record);
-  const caution = needsVerificationCaution(record);
 
   const headerColor =
     status === 'accepting'
@@ -69,7 +67,6 @@ export function PublicLotteryCard({
       <View style={styles.headerRow}>
         <View style={styles.headerLeft}>
           <PublicStatusBadge status={status} />
-          {caution ? <VerificationCautionBadge /> : null}
         </View>
         <Text style={[styles.headerLabel, { color: headerColor }]}>{headerLabel}</Text>
       </View>

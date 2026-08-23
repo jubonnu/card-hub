@@ -82,11 +82,6 @@ export function compareLotteriesByTimeline(a: LotteryRecord, b: LotteryRecord, n
   return timelineSortTimestamp(a, statusA) - timelineSortTimestamp(b, statusB);
 }
 
-/** verificationStatus が未承認（人手確認前）の場合に注意バッジを出すための判定。 */
-export function needsVerificationCaution(record: LotteryRecord): boolean {
-  return record.verificationStatus !== 'approved';
-}
-
 export function getDisplayProductName(record: LotteryRecord): string {
   return record.productNameRaw?.trim() || record.normalizedProductName?.trim() || '商品名未確認';
 }

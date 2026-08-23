@@ -6,7 +6,7 @@ import { DetailHeader } from '@/components/DetailHeader';
 import { ErrorState } from '@/components/ErrorState';
 import { ChevronRightIcon, ShareIcon, StarIcon } from '@/components/icons';
 import { ProductThumb } from '@/components/ProductThumb';
-import { PublicStatusBadge, VerificationCautionBadge } from '@/components/PublicStatusBadge';
+import { PublicStatusBadge } from '@/components/PublicStatusBadge';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { StatusBadge } from '@/components/StatusBadge';
 import { lotteries, products } from '@/data/mockData';
@@ -16,7 +16,7 @@ import { fetchLotteries, getApiErrorCopy } from '@/lib/apiClient';
 import type { LotteryRecord } from '@/schemas/lotteryApi';
 import { useFavoritesStore } from '@/stores/favoritesStore';
 import { useTheme } from '@/theme/useTheme';
-import { derivePublicTimelineStatus, formatAtOrDateOnly, getDisplayShopName, needsVerificationCaution } from '@/utils/publicLotteryDisplay';
+import { derivePublicTimelineStatus, formatAtOrDateOnly, getDisplayShopName } from '@/utils/publicLotteryDisplay';
 import { getCardTypeLabel, groupLotteriesByProduct, type PublicProductGroup } from '@/utils/publicProductDisplay';
 import { formatDateTimeShort, normalizeDeadline } from '@/utils/time';
 
@@ -176,7 +176,6 @@ function ApiProductBody({
                         : '締切・発表日は未公開です'}
                   </Text>
                 </View>
-                {needsVerificationCaution(record) ? <VerificationCautionBadge /> : null}
                 <PublicStatusBadge status={status} />
                 <ChevronRightIcon />
               </Pressable>

@@ -6,7 +6,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { CalendarIcon, ClockIcon, ExternalLinkIcon, StarIcon } from '@/components/icons';
 import { ProductThumb } from '@/components/ProductThumb';
 import { PrimaryButton } from '@/components/PrimaryButton';
-import { PublicStatusBadge, VerificationCautionBadge } from '@/components/PublicStatusBadge';
+import { PublicStatusBadge } from '@/components/PublicStatusBadge';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { SecondaryButton } from '@/components/SecondaryButton';
 import { ShareLotteryButton } from '@/components/ShareLotteryButton';
@@ -31,7 +31,6 @@ import {
   getApplicationUrls,
   getDisplayProductName,
   getDisplayShopName,
-  needsVerificationCaution,
   toLotteryShareInput,
   type LotteryShareInput,
 } from '@/utils/publicLotteryDisplay';
@@ -98,7 +97,6 @@ function ApiLotteryDetailBody({
   const { isSaved, saveLottery, removeLottery } = useMyLotteriesStore();
   const notificationSettings = useNotificationSettingsStore();
   const status = derivePublicTimelineStatus(record, nowIso);
-  const caution = needsVerificationCaution(record);
   // isPast判定・カウントダウン・カレンダー登録に使う正規化済みの値（日付のみの場合はJST終端に補正）。
   const deadline = normalizeDeadline(record.applicationEndAt, record.applicationEndDate);
   const announce = normalizeDeadline(record.resultAnnouncementAt, record.resultAnnouncementDate);
@@ -167,7 +165,6 @@ function ApiLotteryDetailBody({
         <View style={styles.topRow}>
           <View style={styles.topRowLeft}>
             <PublicStatusBadge status={status} />
-            {caution ? <VerificationCautionBadge /> : null}
           </View>
           {status === 'accepting' && deadline ? (
             <View style={styles.countdownRow}>
