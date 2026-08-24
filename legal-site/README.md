@@ -30,7 +30,6 @@ legal-site/
 
 | 項目 | 現在の値 | 対応が必要な理由 |
 |---|---|---|
-| お問い合わせメール | `tesutowant@gmail.com` | 仮の値として設定した個人／テスト用メールアドレス。CardHub専用の問い合わせ窓口に差し替えること | privacy/index.html, terms/index.html, support/index.html |
 | 制定日・最終改定日 | 2026年8月31日 | 公開日が確定していないための仮日付。実際の公開日に合わせて更新すること | privacy/index.html, terms/index.html |
 | Cloudflare PagesのURL | `https://cardhub-legal.pages.dev`（`apps/mobile/lib/legalLinks.ts`） | 未デプロイのため想定URL。実際にデプロイして発行されたURLと一致するか確認すること |
 | 猶予期間「14日間」 | 14日間（コードのデフォルト値） | 本番環境変数の実値と一致しているか未確認。相違があれば統一すること | privacy/index.html |
@@ -50,7 +49,7 @@ legal-site/
 リポジトリ外の場所（運営者本人のみがアクセスできる手元の記録等）で個別に管理してください。
 
 お問い合わせメールは複数ファイルに埋め込まれているため、変更時は全ファイルへの反映漏れがないか
-（`grep -rn "tesutowant@gmail.com" legal-site/` 等で）確認してください。将来的にメールアドレスを1箇所で
+（`grep -rn "cardhub.official5@gmail.com" legal-site/` 等で）確認してください。将来的にメールアドレスを1箇所で
 管理したい場合は、ビルドステップの導入（テンプレート化）を検討してください（本サイトは現時点で
 ビルド不要な構成を優先しているため未導入です）。
 

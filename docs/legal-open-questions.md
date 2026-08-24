@@ -7,15 +7,19 @@
 
 ## A. リリース前に対応が必要な事項
 
-### A-1. 問い合わせメール（決定済み: `tesutowant@gmail.com` を暫定利用）
+### A-1. 問い合わせメール（決定済み: `cardhub.official5@gmail.com` を使用）
 
-運営者の判断により、当面は `tesutowant@gmail.com` を問い合わせ窓口として使用することを決定しました。
+CardHub専用の問い合わせ窓口として `cardhub.official5@gmail.com` を使用することを決定しました
+（従来の暫定アドレス `tesutowant@gmail.com` から変更済み、2026-08-25）。
 
 - `legal-site/privacy/index.html`
 - `legal-site/terms/index.html`
 - `legal-site/support/index.html`
 
-このアドレスがSandbox購入テスト用のApple IDと同一である点は運営者に確認済みで、当面はこのまま使う判断です。将来的にこのアドレスを使わなくなる場合（テスト用アカウントの削除等）は、上記3ファイルを新しい問い合わせ先へ更新してください（`grep -rn "tesutowant@gmail.com" legal-site/` で置換漏れを確認）。
+`tesutowant@gmail.com` はSandbox購入テスト用のApple IDと同一のアドレスだったため、
+問い合わせ窓口を専用アドレスへ切り離した形になります（Sandbox Tester側の設定自体は
+今回変更していません）。将来アドレスを変更する場合は、上記3ファイルを新しい問い合わせ先へ
+更新してください（`grep -rn "cardhub.official5@gmail.com" legal-site/` で置換漏れを確認）。
 
 ### A-2. legal-siteのデプロイ（完了）
 
