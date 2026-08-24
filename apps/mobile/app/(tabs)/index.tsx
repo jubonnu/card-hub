@@ -16,7 +16,7 @@ import { derivePublicTimelineStatus, getDisplayProductName, getDisplayShopName }
 import { formatRelativeMinutes, isPast, normalizeDeadline } from '@/utils/time';
 
 const NEW_ARRIVALS_FETCH_LIMIT = 20;
-const NEW_ARRIVALS_DISPLAY_COUNT = 3;
+const NEW_ARRIVALS_DISPLAY_COUNT = 5;
 const TODAYS_TASKS_DISPLAY_COUNT = 3;
 
 export default function HomeScreen() {
