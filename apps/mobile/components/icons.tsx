@@ -73,6 +73,15 @@ export function SearchIcon({ size = defaults.size, color = defaults.color, strok
   );
 }
 
+export function TrendingUpIcon({ size = defaults.size, color = defaults.color, strokeWidth = 2.1 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M3 17l6-6 4 4 8-8" />
+      <Path d="M15 7h6v6" />
+    </Svg>
+  );
+}
+
 export function FilterIcon({ size = defaults.size, color = defaults.color, strokeWidth = 1.9 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round">

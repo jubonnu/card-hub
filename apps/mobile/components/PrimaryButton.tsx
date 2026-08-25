@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
 import { useTheme } from '@/theme/useTheme';
 
@@ -10,9 +10,10 @@ interface PrimaryButtonProps {
   disabled?: boolean;
   loading?: boolean;
   size?: 'md' | 'lg';
+  style?: StyleProp<ViewStyle>;
 }
 
-export function PrimaryButton({ label, onPress, icon, disabled, loading, size = 'lg' }: PrimaryButtonProps) {
+export function PrimaryButton({ label, onPress, icon, disabled, loading, size = 'lg', style }: PrimaryButtonProps) {
   const theme = useTheme();
   const height = size === 'lg' ? 52 : 46;
 
@@ -27,6 +28,7 @@ export function PrimaryButton({ label, onPress, icon, disabled, loading, size = 
           backgroundColor: theme.colors.green,
           opacity: disabled ? 0.5 : pressed ? 0.85 : 1,
         },
+        style,
       ]}
     >
       {loading ? (
