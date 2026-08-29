@@ -30,7 +30,7 @@ legal-site/
 
 | 項目 | 現在の値 | 対応が必要な理由 |
 |---|---|---|
-| 制定日・最終改定日 | 2026年8月31日 | 公開日が確定していないための仮日付。実際の公開日に合わせて更新すること | privacy/index.html, terms/index.html |
+| 制定日・最終改定日 | 2026年9月3日 | 実際の公開日に更新済み（2026-08-29対応） | privacy/index.html, terms/index.html |
 | Cloudflare PagesのURL | `https://cardhub-legal.pages.dev`（`apps/mobile/lib/legalLinks.ts`） | 未デプロイのため想定URL。実際にデプロイして発行されたURLと一致するか確認すること |
 | 猶予期間「14日間」 | 14日間（コードのデフォルト値） | 本番環境変数の実値と一致しているか未確認。相違があれば統一すること | privacy/index.html |
 

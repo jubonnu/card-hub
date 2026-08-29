@@ -215,6 +215,8 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   nextButton: {
-    width: 160,
+    alignSelf: 'stretch',
+    height: undefined,
+    paddingVertical: 16,
   },
 });
