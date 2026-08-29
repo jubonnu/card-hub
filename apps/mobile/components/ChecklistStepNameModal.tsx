@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useTheme } from '@/theme/useTheme';
 
@@ -44,7 +44,7 @@ export function ChecklistStepNameModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
+      <KeyboardAvoidingView style={styles.backdrop} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
           <Text style={[styles.title, { color: theme.colors.textPrimary }]}>{title}</Text>
           <TextInput
@@ -75,7 +75,7 @@ export function ChecklistStepNameModal({
             </Pressable>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

@@ -9,7 +9,7 @@ import { ProductThumb } from '@/components/ProductThumb';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { useApiRequest } from '@/hooks/useApiRequest';
 import { useNowIso } from '@/hooks/useNowIso';
-import { fetchLotteries } from '@/lib/apiClient';
+import { fetchLotteries, getApiErrorCopy } from '@/lib/apiClient';
 import { useMyLotteriesStore } from '@/stores/myLotteriesStore';
 import { useTheme } from '@/theme/useTheme';
 import { derivePublicTimelineStatus, getDisplayProductName, getDisplayShopName } from '@/utils/publicLotteryDisplay';
@@ -122,7 +122,19 @@ export default function HomeScreen() {
             </Pressable>
           </View>
 
-          {newArrivals.length === 0 ? (
+          {newArrivalsState.status === 'error' ? (
+            <View style={[styles.dashedEmpty, { borderColor: theme.colors.danger }]}>
+              <Text style={[styles.dashedTitle, { color: theme.colors.danger }]}>
+                {getApiErrorCopy(newArrivalsState.error).title}
+              </Text>
+              <Text style={[styles.dashedDesc, { color: theme.colors.textTertiary }]}>
+                {getApiErrorCopy(newArrivalsState.error).description}
+              </Text>
+              <Pressable onPress={newArrivalsState.retry}>
+                <Text style={[styles.seeAll, { color: theme.colors.green }]}>再読み込み</Text>
+              </Pressable>
+            </View>
+          ) : newArrivals.length === 0 ? (
             <View style={[styles.dashedEmpty, { borderColor: theme.colors.thumbInner }]}>
               <Text style={[styles.dashedTitle, { color: theme.colors.textLabel }]}>新着抽選はありません</Text>
               <Text style={[styles.dashedDesc, { color: theme.colors.textTertiary }]}>
