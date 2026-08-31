@@ -27,13 +27,18 @@ export type PaginatedLotteriesState =
  * - 追加読み込み中は `loadingMoreRef` で連打をブロックする（stateの非同期反映を待たない）
  * - 追加取得が失敗しても既存の一覧はそのまま保持し、再試行できる
  * - AbortControllerで初回/追加読み込みそれぞれのリクエストをキャンセルする
+ * - q（検索語）はサーバー検索に渡す。qが変わったら resetKey と同様に初回読み込みからやり直す
+ *   （呼び出し側でdebounce済みの値を渡すことを想定。qRefで保持し、loadMore/refreshも常に
+ *   最新のqを使う）
  */
-export function usePaginatedLotteries(resetKey: unknown) {
+export function usePaginatedLotteries(resetKey: unknown, q: string = '') {
   const [state, setState] = useState<PaginatedLotteriesState>({ status: 'loading' });
   const abortRef = useRef<AbortController | null>(null);
   const loadingMoreRef = useRef(false);
   const asOfRef = useRef<string | null>(null);
   const nextCursorRef = useRef<string | null>(null);
+  const qRef = useRef(q);
+  qRef.current = q;
 
   const loadInitial = useCallback(() => {
     abortRef.current?.abort();
@@ -44,7 +49,7 @@ export function usePaginatedLotteries(resetKey: unknown) {
     nextCursorRef.current = null;
     setState({ status: 'loading' });
 
-    fetchLotteries({ limit: LOTTERIES_PAGE_SIZE }, controller.signal)
+    fetchLotteries({ limit: LOTTERIES_PAGE_SIZE, q: qRef.current || undefined }, controller.signal)
       .then((res) => {
         asOfRef.current = res.asOf;
         nextCursorRef.current = res.nextCursor;
@@ -67,7 +72,7 @@ export function usePaginatedLotteries(resetKey: unknown) {
     loadInitial();
     return () => abortRef.current?.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resetKey]);
+  }, [resetKey, q]);
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -84,7 +89,7 @@ export function usePaginatedLotteries(resetKey: unknown) {
     setRefreshing(true);
 
     try {
-      const res = await fetchLotteries({ limit: LOTTERIES_PAGE_SIZE }, controller.signal);
+      const res = await fetchLotteries({ limit: LOTTERIES_PAGE_SIZE, q: qRef.current || undefined }, controller.signal);
       asOfRef.current = res.asOf;
       nextCursorRef.current = res.nextCursor;
       setState({
@@ -114,7 +119,7 @@ export function usePaginatedLotteries(resetKey: unknown) {
     const controller = new AbortController();
     abortRef.current = controller;
 
-    fetchLotteries({ limit: LOTTERIES_PAGE_SIZE, cursor, asOf }, controller.signal)
+    fetchLotteries({ limit: LOTTERIES_PAGE_SIZE, cursor, asOf, q: qRef.current || undefined }, controller.signal)
       .then((res) => {
         asOfRef.current = res.asOf;
         nextCursorRef.current = res.nextCursor;

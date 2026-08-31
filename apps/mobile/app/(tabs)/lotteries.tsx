@@ -9,6 +9,7 @@ import { PublicLotteryCard } from '@/components/PublicLotteryCard';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { SecondaryButton } from '@/components/SecondaryButton';
 import { SkeletonCard } from '@/components/SkeletonCard';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useLotteryStatusSheet } from '@/hooks/useLotteryStatusSheet';
 import { useNowIso } from '@/hooks/useNowIso';
 import { usePaginatedLotteries } from '@/hooks/usePaginatedLotteries';
@@ -36,8 +37,15 @@ export default function LotteriesScreen() {
   const nowIso = useNowIso();
   const openStatusSheet = useLotteryStatusSheet();
 
+  // 検索語はデバウンスしてから渡す（キー入力ごとにサーバーへ検索リクエストを飛ばさないため）。
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
+
   // 全国の抽選: GET /lotteries に接続（Phase Mobile-B）。「もっと見る」方式のページネーション（Phase Mobile-E）。
-  const { state: pageState, retry: retryInitial, loadMore, refresh, refreshing } = usePaginatedLotteries(mode);
+  // 検索（q）はサーバー側で行うため、qが変わるとcursorをリセットして1ページ目から取得し直す。
+  const { state: pageState, retry: retryInitial, loadMore, refresh, refreshing } = usePaginatedLotteries(
+    mode,
+    debouncedSearchQuery
+  );
 
   const [mineRefreshing, setMineRefreshing] = useState(false);
   async function handleMineRefresh() {
@@ -67,19 +75,16 @@ export default function LotteriesScreen() {
   // ここでは再ソートしない（フィルタのみ行い、取得順をそのまま維持する）。
   // 再ソートすると、既に読み込んだページとサーバー側の並び順の境界がずれ、
   // 「もっと見る」で追加した分が末尾ではなく途中に割り込む不具合の原因になる。
+  // 検索（q）は usePaginatedLotteries がサーバーに渡す。ここではステータスタブの絞り込みのみ行う。
   const filteredAll = useMemo(() => {
     if (pageState.status !== 'ready') return [];
     let list = pageState.items;
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim();
-      list = list.filter((r) => getDisplayProductName(r).includes(q) || getDisplayShopName(r).includes(q));
-    }
     if (statusTab !== 'all') {
       list = list.filter((r) => derivePublicTimelineStatus(r, nowIso) === statusTab);
     }
     return list;
-  }, [pageState, searchQuery, statusTab, nowIso]);
+  }, [pageState, statusTab, nowIso]);
 
   const hasMore = pageState.status === 'ready' && pageState.hasMore;
 

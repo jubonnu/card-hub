@@ -68,6 +68,8 @@ async function getJson(path: string, signal?: AbortSignal): Promise<unknown> {
 export interface FetchLotteriesParams {
   cardType?: string;
   verificationStatus?: string;
+  /** 商品名・店舗名の部分一致検索。 */
+  q?: string;
   limit?: number;
   /** 前ページのレスポンスが返した nextCursor。指定する場合は asOf も必ず同じ値を渡すこと。 */
   cursor?: string;
@@ -82,6 +84,7 @@ export async function fetchLotteries(
   const query = new URLSearchParams();
   if (params.cardType) query.set('cardType', params.cardType);
   if (params.verificationStatus) query.set('verificationStatus', params.verificationStatus);
+  if (params.q) query.set('q', params.q);
   if (params.limit != null) query.set('limit', String(params.limit));
   if (params.cursor != null) query.set('cursor', params.cursor);
   if (params.asOf != null) query.set('asOf', params.asOf);
