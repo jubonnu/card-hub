@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isPast, normalizeDeadline } from './time';
+import { formatRemaining, isPast, normalizeDeadline } from './time';
 
 describe('normalizeDeadline', () => {
   it('_atがあればそれをそのまま返す（_dateは無視）', () => {
@@ -52,5 +52,29 @@ describe('isPast × normalizeDeadline（日付のみ締切の境界テスト）'
     const d1 = normalizeDeadline(null, '2026-12-31');
     const d2 = normalizeDeadline(null, '2027-01-01');
     expect(new Date(d1!).getTime()).toBeLessThan(new Date(d2!).getTime());
+  });
+});
+
+describe('formatRemaining', () => {
+  it('1日以上残っていれば「残り◯日」', () => {
+    expect(formatRemaining('2026-08-03T00:00:00.000Z', '2026-08-01T00:00:00.000Z')).toBe('残り2日');
+  });
+
+  it('1日未満・時刻ありのデータは「残り◯時間◯分」（従来通り）', () => {
+    expect(formatRemaining('2026-08-01T05:30:00.000Z', '2026-08-01T03:00:00.000Z')).toBe('残り2時間30分');
+  });
+
+  it('1日未満・isDateOnly=trueの場合は実在しない時刻の精度を出さず「本日中」', () => {
+    // normalizeDeadline(null, '2026-08-01') が返すJST翌日0時（UTC 2026-08-01T15:00）の
+    // 数時間前という状況（＝実際には「本日」が締切日）を想定。
+    expect(formatRemaining('2026-08-01T15:00:00.000Z', '2026-08-01T10:00:00.000Z', true)).toBe('本日中');
+  });
+
+  it('期限切れは isDateOnly に関わらず「期限切れ」', () => {
+    expect(formatRemaining('2026-08-01T00:00:00.000Z', '2026-08-02T00:00:00.000Z', true)).toBe('期限切れ');
+  });
+
+  it('isDateOnly未指定時の既定動作は従来通り（時刻ありとして扱う）', () => {
+    expect(formatRemaining('2026-08-01T15:00:00.000Z', '2026-08-01T10:00:00.000Z')).toBe('残り5時間0分');
   });
 });

@@ -93,8 +93,9 @@ export function getDisplayShopName(record: LotteryRecord): string {
 export function getHeaderMetaLine(record: LotteryRecord, nowIso: string): string {
   const status = derivePublicTimelineStatus(record, nowIso);
   const deadline = normalizeDeadline(record.applicationEndAt, record.applicationEndDate);
+  const isDateOnly = !record.applicationEndAt && Boolean(record.applicationEndDate);
 
-  if (status === 'accepting' && deadline) return formatRemaining(deadline, nowIso);
+  if (status === 'accepting' && deadline) return formatRemaining(deadline, nowIso, isDateOnly);
   if (status === 'ended') return '受付終了';
   if (status === 'resultPending') return '結果発表待ち';
   return '詳細未定';

@@ -32,7 +32,13 @@ export function normalizeDeadline(atValue: string | null | undefined, dateValue:
   return new Date(jstNextDayStartUtcMs).toISOString();
 }
 
-export function formatRemaining(targetIso: string, nowIso: string): string {
+/**
+ * `isDateOnly`が真の場合、`targetIso`は`normalizeDeadline`が「日付のみ（時刻不明）」から
+ * JST翌日0時として補完した値である（実際の締切時刻ではない）。締切当日（残り1日未満）に
+ * なると時間・分単位の表示に切り替わってしまい、実在しない精度（例:「残り2時間30分」）を
+ * 見せてしまうため、その場合は日数に関わらず「本日中」のような粗い表現に留める。
+ */
+export function formatRemaining(targetIso: string, nowIso: string, isDateOnly = false): string {
   const diffMs = new Date(targetIso).getTime() - new Date(nowIso).getTime();
   if (diffMs <= 0) return '期限切れ';
 
@@ -42,6 +48,7 @@ export function formatRemaining(targetIso: string, nowIso: string): string {
   const mins = minutes % 60;
 
   if (days >= 1) return `残り${days}日`;
+  if (isDateOnly) return '本日中';
   if (hours >= 1) return `残り${hours}時間${mins}分`;
   return `残り${mins}分`;
 }

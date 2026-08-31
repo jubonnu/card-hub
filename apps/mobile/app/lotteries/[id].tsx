@@ -170,7 +170,7 @@ function ApiLotteryDetailBody({
             <View style={styles.countdownRow}>
               <ClockIcon />
               <Text style={[styles.countdownText, { color: theme.colors.danger }]}>
-                締切まで{formatRemaining(deadline, nowIso)}
+                締切まで{formatRemaining(deadline, nowIso, !record.applicationEndAt && Boolean(record.applicationEndDate))}
               </Text>
             </View>
           ) : null}
