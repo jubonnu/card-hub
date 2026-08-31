@@ -1,4 +1,5 @@
-import { Image, StyleSheet, View } from 'react-native';
+import { Image } from 'expo-image';
+import { StyleSheet, View } from 'react-native';
 
 import { useTheme } from '@/theme/useTheme';
 
@@ -35,7 +36,9 @@ export function ProductThumb({ size = 'md', imageUrl }: ProductThumbProps) {
         <Image
           source={{ uri: imageUrl }}
           style={{ width: dims.width - 2, height: dims.height - 2, borderRadius: dims.radius - 1 }}
-          resizeMode="cover"
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={200}
         />
       ) : (
         <View
