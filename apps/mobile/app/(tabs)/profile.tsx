@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import Constants from 'expo-constants';
 
 import {
   BellIcon,
@@ -270,10 +271,18 @@ export default function ProfileScreen() {
             </>
           )}
         </View>
+
+        <Text style={[styles.versionText, { color: theme.colors.textFaint }]}>バージョン {appVersionLabel}</Text>
       </ScrollView>
     </ScreenContainer>
   );
 }
+
+const appVersionLabel = (() => {
+  const version = Constants.expoConfig?.version ?? '-';
+  const buildNumber = Platform.OS === 'ios' ? Constants.expoConfig?.ios?.buildNumber : Constants.expoConfig?.android?.versionCode;
+  return buildNumber ? `${version} (${buildNumber})` : version;
+})();
 
 function StatItem({ label, value, color }: { label: string; value: string; color: string }) {
   const theme = useTheme();
@@ -411,5 +420,11 @@ const styles = StyleSheet.create({
   },
   menuTrailing: {
     fontSize: 11,
+  },
+  versionText: {
+    fontSize: 11,
+    textAlign: 'center',
+    paddingTop: 4,
+    paddingBottom: 20,
   },
 });
