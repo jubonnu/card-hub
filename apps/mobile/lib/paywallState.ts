@@ -9,7 +9,8 @@ export type PaywallTransient =
   | 'purchasePendingVerification'
   | 'cancelled'
   | 'failed'
-  | 'serverVerificationFailed';
+  | 'serverVerificationFailed'
+  | 'restoredNothingFound';
 
 export interface PaywallStateInput {
   billingStatus: BillingStatus;
@@ -33,6 +34,7 @@ export function derivePaywallState(input: PaywallStateInput): PaywallState {
   if (input.transient === 'restoring') return 'restoring';
   if (input.transient === 'purchasePendingVerification') return 'purchasePendingVerification';
   if (input.transient === 'serverVerificationFailed') return 'serverVerificationFailed';
+  if (input.transient === 'restoredNothingFound') return input.isPremium ? 'premium' : 'restoredNothingFound';
   if (input.transient === 'cancelled') return 'cancelled';
   if (input.transient === 'failed') return 'failed';
 

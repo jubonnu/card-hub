@@ -122,7 +122,13 @@ export default function PaywallScreen() {
       return;
     }
 
-    useBillingStore.getState().applyLocalCustomerInfo(isLocalEntitlementActive(result.customerInfo), localProductType(result.customerInfo));
+    const restoredActive = isLocalEntitlementActive(result.customerInfo);
+    useBillingStore.getState().applyLocalCustomerInfo(restoredActive, localProductType(result.customerInfo));
+
+    if (!restoredActive) {
+      setTransient('restoredNothingFound');
+      return;
+    }
     await verifyAfterPurchaseOrRestore();
   }
 
@@ -180,6 +186,13 @@ export default function PaywallScreen() {
                 購入済み・確認中に問題が発生しました。もう一度確認してください
               </Text>
               <PrimaryButton label="もう一度確認する" size="md" onPress={() => void verifyAfterPurchaseOrRestore()} />
+            </View>
+          )}
+
+          {state === 'restoredNothingFound' && (
+            <View style={styles.section}>
+              <Text style={[styles.message, { color: theme.colors.textTertiary }]}>復元できる購入が見つかりませんでした</Text>
+              <PrimaryButton label="もう一度見る" size="md" onPress={() => setTransient('idle')} />
             </View>
           )}
 

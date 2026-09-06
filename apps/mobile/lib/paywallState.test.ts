@@ -53,6 +53,14 @@ describe('derivePaywallState', () => {
     );
   });
 
+  it('復元したが有効なエンタイトルメントが無い場合はrestoredNothingFound', () => {
+    expect(derivePaywallState({ ...base, transient: 'restoredNothingFound' })).toBe('restoredNothingFound');
+  });
+
+  it('restoredNothingFoundでもpremiumが確定していればpremiumを優先する', () => {
+    expect(derivePaywallState({ ...base, isPremium: true, transient: 'restoredNothingFound' })).toBe('premium');
+  });
+
   it('notConfigured・signedOutはtransientより優先される', () => {
     expect(derivePaywallState({ ...base, billingStatus: 'notConfigured', transient: 'purchasing' })).toBe('notConfigured');
     expect(derivePaywallState({ ...base, authStatus: 'signedOut', transient: 'purchasing' })).toBe('signedOut');

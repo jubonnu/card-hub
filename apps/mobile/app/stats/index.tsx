@@ -78,6 +78,9 @@ function errorCopy(error: unknown): { title: string; description: string } {
   if (error instanceof AuthApiError && error.kind === 'network') {
     return { title: 'サーバーに接続できませんでした', description: '通信状況を確認して、もう一度読み込んでください' };
   }
+  if (error instanceof AuthApiError && error.kind === 'premium_required') {
+    return { title: '購入の確認処理が完了していません', description: 'しばらくしてからもう一度読み込んでください' };
+  }
   if (error instanceof StatisticsResponseValidationError) {
     return { title: 'データを正しく読み込めませんでした', description: 'しばらくしてからもう一度お試しください' };
   }

@@ -29,4 +29,5 @@ export type PaywallState =
   | 'cancelled'
   | 'failed'
   | 'offlineCached'
-  | 'serverVerificationFailed';
+  | 'serverVerificationFailed'
+  | 'restoredNothingFound';
