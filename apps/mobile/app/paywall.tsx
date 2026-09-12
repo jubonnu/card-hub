@@ -8,6 +8,7 @@ import { PurchaseButton } from '@/components/billing/PurchaseButton';
 import { RestorePurchasesButton } from '@/components/billing/RestorePurchasesButton';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenContainer } from '@/components/ScreenContainer';
+import { track } from '@/lib/analytics';
 import { isRevenueCatUserMatchingCurrentAuthUser } from '@/lib/billingLifecycle';
 import { isLocalEntitlementActive, localProductType } from '@/lib/entitlements';
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '@/lib/legalLinks';
@@ -46,6 +47,10 @@ export default function PaywallScreen() {
     offeringsLoadFailed,
     transient,
   });
+
+  useEffect(() => {
+    track('paywall_viewed');
+  }, []);
 
   useEffect(() => {
     if (billing.billingStatus !== 'configured' || authStatus !== 'signedIn') return;
@@ -106,6 +111,7 @@ export default function PaywallScreen() {
     }
 
     useBillingStore.getState().applyLocalCustomerInfo(isLocalEntitlementActive(result.customerInfo), localProductType(result.customerInfo));
+    track('purchase_completed', { product: pkg.identifier });
     await verifyAfterPurchaseOrRestore();
   }
 

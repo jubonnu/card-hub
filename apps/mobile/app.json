@@ -60,6 +60,13 @@
           "backgroundColor": "#FAFAFA",
           "enableFullScreenImage_legacy": true
         }
+      ],
+      [
+        "@sentry/react-native",
+        {
+          "organization": "jun-apps",
+          "project": "react-native"
+        }
       ]
     ],
     "experiments": {

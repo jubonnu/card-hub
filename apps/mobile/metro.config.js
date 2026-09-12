@@ -1,6 +1,9 @@
-const { getDefaultConfig } = require('expo/metro-config');
+const { getSentryExpoConfig } = require('@sentry/react-native/metro');
 
-const config = getDefaultConfig(__dirname);
+// getDefaultConfig(expo/metro-config)の代わりにgetSentryExpoConfigを使う。ソースマップに
+// Debug IDを埋め込み、EAS Build時にSentryへアップロードするソースマップと実際にユーザーの
+// 端末で動くバンドルを正しく突き合わせられるようにするため（Sentryの推奨設定）。
+const config = getSentryExpoConfig(__dirname);
 
 // zustand（および一部の他パッケージ）は package.json "exports" 経由だとESMビルド
 // （import.meta.env を含み、Metroのweb向けバンドルではSyntaxErrorになる）が

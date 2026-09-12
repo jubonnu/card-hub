@@ -2,6 +2,7 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
 
 import { deleteNamespaceData, syncNamespaceWithAuthUser } from '@/lib/accountNamespace';
+import { identify, resetAnalyticsIdentity, track } from '@/lib/analytics';
 import { appleSignIn, deleteMe, fetchMe, logout, logoutAllDevices } from '@/lib/authApiClient';
 import { ensureRevenueCatLogin, revenueCatLogout } from '@/lib/billingLifecycle';
 import { ensureNamespaceAndBootstrap } from '@/lib/bootstrapSync';
@@ -122,6 +123,10 @@ export async function signInWithApple(): Promise<void> {
     // RevenueCatユーザー切替（Mobile-G4-1）。内部で例外を握りつぶすため、ここでは待つだけでよい。
     await ensureRevenueCatLogin(loginResult.user.publicUserId);
 
+    // 匿名IDとログインユーザーを紐付け、サインイン完了イベントを計測する。
+    identify(loginResult.user.publicUserId);
+    track('sign_in_completed');
+
     await hydrateFullUser(loginResult.accessToken);
   };
 
@@ -157,7 +162,10 @@ export async function restoreSession(): Promise<void> {
     }
     // アプリ起動時、signedIn後にRevenueCatユーザー切替を確定させる（Mobile-G4-4）。
     const publicUserId = useAuthStore.getState().user?.publicUserId;
-    if (publicUserId) await ensureRevenueCatLogin(publicUserId);
+    if (publicUserId) {
+      await ensureRevenueCatLogin(publicUserId);
+      identify(publicUserId);
+    }
   } catch (e) {
     if (e instanceof SessionDiscardedError) return;
     // それ以外（network/5xx等）はtokenRefresh側でsessionAvailability='offlineCached'へ
@@ -175,6 +183,7 @@ async function localSignOutCleanup(): Promise<void> {
   await syncNamespaceWithAuthUser(); // userのnamespaceは削除しない。guestへ切り替えるのみ（24-3章）。
   useSyncConflictsStore.getState().clear();
   await revenueCatLogout(); // Purchases.logOut() + billingStoreリセット（Mobile-G4-1・G4-4）。
+  resetAnalyticsIdentity(); // 次のユーザーに前のユーザーの識別情報を引き継がせない。
 }
 
 /**

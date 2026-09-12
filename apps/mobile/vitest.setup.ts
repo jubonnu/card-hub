@@ -83,3 +83,20 @@ vi.mock('react-native-purchases', () => {
     PURCHASES_ERROR_CODE: { PURCHASE_CANCELLED_ERROR: '1' },
   };
 });
+
+/**
+ * PostHog/Sentryは`react-native`本体（Flow構文を含む）を内部でimportするため、他のネイティブ
+ * 専用モジュールと同じ理由（Node環境のvitestでは解析できない）でモック化する。
+ */
+vi.mock('posthog-react-native', () => {
+  const mockClient = {
+    capture: vi.fn(),
+    identify: vi.fn(),
+    reset: vi.fn(),
+  };
+  return { default: vi.fn(() => mockClient) };
+});
+
+vi.mock('@sentry/react-native', () => ({
+  init: vi.fn(),
+}));

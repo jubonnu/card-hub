@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { fetchLotteryById } from '@/lib/apiClient';
 import { createAccountScopedStorage, isNamespaceSwitching, isSyncEligible, registerAccountScopedStore } from '@/lib/accountNamespace';
+import { track } from '@/lib/analytics';
+import { fetchLotteryById } from '@/lib/apiClient';
 import { generateClientRequestId } from '@/lib/clientRequestId';
 import { markGuestDataChanged } from '@/lib/guestRevision';
 import { isValidLotteryStatusTransition } from '@/lib/lotteryStatusTransitions';
@@ -68,6 +69,7 @@ export const useMyLotteriesStore = create<MyLotteriesState>()(
         const savedAt = new Date().toISOString();
         set((state) => ({ saved: [...state.saved, { record, savedAt, status: 'unknown' }] }));
         void markGuestDataChanged();
+        track('lottery_saved', { lotteryId: record.id });
 
         if (isSyncEligible()) {
           const clientRequestId = generateClientRequestId();
@@ -176,6 +178,7 @@ export const useMyLotteriesStore = create<MyLotteriesState>()(
           saved: state.saved.map((s) => (s.record.id === lotteryId ? { ...s, status: nextStatus } : s)),
         }));
         void markGuestDataChanged();
+        track('lottery_status_updated', { lotteryId, status: nextStatus });
         return true;
       },
       resetToDefaults: () => set(DEFAULT_STATE),

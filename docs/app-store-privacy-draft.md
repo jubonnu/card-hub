@@ -83,14 +83,32 @@ Apple Sign inを実装している場合、App Store Connect側で「Sign in wit
 
 ### Other Diagnostic Data（その他の診断情報）
 
+**2026-09-13追記: この節は古い。Sentry（クラッシュ監視）を導入したため、次にビルドを新規提出する前に
+App Store ConnectのApp Privacy質問票側の「Diagnostics」区分の回答をこの節の内容に合わせて更新すること。
+現在審査中/承認済みのビルドにはSentryの実キーが含まれていないため、それらのビルドについては本節の
+旧内容（収集無し）のままで整合している。**
+
 | 項目 | 内容 |
 |---|---|
-| 収集 | 無し（コード上確認できず） |
-| ユーザーにリンクされるか | 該当なし |
-| トラッキング目的での利用 | 該当なし |
-| 利用目的 | 該当なし |
-| 根拠 | モバイルアプリ・バックエンド双方でSentry等のクラッシュレポート/診断SDKの導入なし（`package.json`依存関係・コード全文grepで確認済み）。サーバー側ログはCloudflare Workersの標準console出力のみで、Apple Privacyの申告対象となる「アプリからAppleまたは第三者へ送信される診断データ」には該当しないと考えられる。 |
+| 収集 | あり（Sentryによるクラッシュ・エラー診断情報） |
+| ユーザーにリンクされるか | 原則しない（Sentry送信時にユーザーIDやメールアドレス等の個人情報を明示的にひも付けていない。エラー内容・発生箇所・端末機種/OSバージョン等の技術情報が中心） |
+| トラッキング目的での利用 | 無し（広告・他社間トラッキングには使用しない） |
+| 利用目的 | アプリの品質・安定性の維持（クラッシュ・エラーの検知と原因調査） |
+| 根拠 | `apps/mobile/lib/sentry.ts`（`@sentry/react-native`、`EXPO_PUBLIC_SENTRY_DSN`未設定時はno-op）、`apps/mobile/app.json`のSentry Expoプラグイン設定 |
 | 不確実性 | Expo/EAS自体がビルド・配信基盤として何らかの匿名化されたテレメトリを収集している可能性はあるが、これはExpo社のインフラ利用に伴うものであり、CardHubアプリのコードが能動的に収集・送信しているものではない。Expo社自身のプライバシーポリシーの確認が別途必要。 |
+
+### Product Interaction（プロダクトの操作情報）— PostHog追加分
+
+**2026-09-13追記**: 上記「Product Interaction」節（自分の抽選管理・統計機能起因の収集）に加え、PostHog（利用状況分析）による操作ログ収集を導入した。次にビルドを新規提出する前に、App Store ConnectのApp Privacy質問票側の「Product Interaction」区分の回答（トラッキング利用の有無を含む）を以下の内容に合わせて更新すること。
+
+| 項目 | 内容 |
+|---|---|
+| 収集 | あり（PostHogによる画面遷移・主要イベントの操作ログ） |
+| ユーザーにリンクされるか | される（サインイン成功時に`publicUserId`で`identify`する。未サインイン時は匿名ID） |
+| トラッキング目的での利用 | 無し（自社アプリの分析目的のみ。他社・他アプリを横断した広告トラッキングには使用しない） |
+| 利用目的 | アプリの機能改善（グロース・UX改善のための行動分析） |
+| 根拠 | `apps/mobile/lib/analytics.ts`（`posthog-react-native`、`EXPO_PUBLIC_POSTHOG_API_KEY`未設定時はno-op）。計測イベントは`sign_in_completed`/`lottery_saved`/`lottery_status_updated`/`paywall_viewed`/`purchase_completed`の5個のみに絞っている。 |
+| 不確実性 | 「トラッキング目的での利用：無し」の判定は、他社・他アプリとのデータ突合を行っていない現状の実装に基づく。将来的にPostHogの広告連携機能等を有効化する場合は再判定が必要。 |
 
 ### IPアドレスのハッシュ
 

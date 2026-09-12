@@ -6,12 +6,14 @@ import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { initPostHog } from '@/lib/analytics';
 import { restoreSession } from '@/lib/authActions';
 import { registerCustomerInfoListener } from '@/lib/billingLifecycle';
 import { runDifferentialSync } from '@/lib/differentialSync';
 import { configureNotificationHandler, extractLotteryIdFromNotification } from '@/lib/notifications';
 import { processQueue } from '@/lib/offlineQueue';
 import { configurePurchases, getBillingStatus } from '@/lib/purchases';
+import { initSentry } from '@/lib/sentry';
 import { refreshAccessToken, shouldPreemptivelyRefresh } from '@/lib/tokenRefresh';
 import { useAuthStore } from '@/stores/authStore';
 import { useBillingStore } from '@/stores/billingStore';
@@ -28,6 +30,10 @@ if (__DEV__ && typeof window !== 'undefined') {
     window as unknown as { setOnboardingDemoTheme: typeof setOnboardingDemoTheme }
   ).setOnboardingDemoTheme = setOnboardingDemoTheme;
 }
+
+// クラッシュ監視（Sentry）はできるだけ早く初期化し、この後の初期化処理自体が失敗した場合も
+// 捕捉できるようにする。DSN未設定の間はno-op（`lib/sentry.ts`参照）。
+initSentry();
 
 // JSバンドルの評価～最初のレンダーの間に一瞬白画面が挟まらないよう、ネイティブスプラッシュを
 // 明示的に維持し、RootLayoutの初回マウント後に手動で閉じる（expo-splash-screenの標準パターン）。
@@ -86,6 +92,11 @@ export default function RootLayout() {
     configurePurchases();
     useBillingStore.getState().setBillingStatus(getBillingStatus());
     registerCustomerInfoListener();
+
+    // PostHogの初期化（利用状況分析）。APIキー未設定でもクラッシュしない（`lib/analytics.ts`が
+    // 安全にno-opする）。ログイン済みユーザーとの紐付け（identify）はサインイン成功時に行う
+    // （`lib/authActions.ts`）。それまでは匿名IDでイベントを計測する。
+    initPostHog();
 
     // 未ログインでも抽選一覧・詳細等の公開範囲は引き続き利用できるため、
     // サインイン画面へ強制リダイレクトはしない（restoreSessionはauthStoreの状態のみ更新する）。
