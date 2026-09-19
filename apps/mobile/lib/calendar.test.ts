@@ -11,14 +11,16 @@ describe('addEventsToCalendar', () => {
     useCalendarEventStore.setState({ eventIdsByKey: {} });
   });
 
-  it('dateIso（時刻あり）は1時間の予定として登録する', async () => {
+  it('dateIso（時刻あり）は、その時刻を「終了」とする1時間の予定として登録する（締切等は終わりの瞬間を表す値のため、開始にはしない）', async () => {
     await addEventsToCalendar('lottery-1', [{ title: '【応募締切】テスト', dateIso: '2026-07-26T03:00:00.000Z', notes: 'ショップ' }]);
 
     expect(Calendar.createEventAsync).toHaveBeenCalledTimes(1);
     const params = vi.mocked(Calendar.createEventAsync).mock.calls[0]![1]!;
     expect(params.allDay).toBeUndefined();
-    expect((params.startDate as Date).toISOString()).toBe('2026-07-26T03:00:00.000Z');
-    expect((params.endDate as Date).toISOString()).toBe('2026-07-26T04:00:00.000Z');
+    expect((params.startDate as Date).toISOString()).toBe('2026-07-26T02:00:00.000Z');
+    expect((params.endDate as Date).toISOString()).toBe('2026-07-26T03:00:00.000Z');
+    // リマインダーは予定の開始（＝締切の1時間前）に鳴る。
+    expect(params.alarms).toEqual([{ relativeOffset: 0 }]);
   });
 
   it('dateOnly（日付のみ）は誤った時刻の精度を出さず、その日いっぱいの終日イベントとして登録する', async () => {

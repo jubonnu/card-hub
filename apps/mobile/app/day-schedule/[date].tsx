@@ -96,8 +96,10 @@ export default function DayScheduleScreen() {
   }, [date]);
 
   useEffect(() => {
-    const firstHour = positionedItems[0]?.hour ?? 8;
-    const y = firstHour * HOUR_HEIGHT;
+    // 予定は終了時刻の1時間前から描画されるため（下記positionedItems参照）、
+    // スクロール位置もその開始位置に合わせる。
+    const firstHour = positionedItems[0]?.hour ?? 9;
+    const y = Math.max(0, firstHour - 1) * HOUR_HEIGHT;
     requestAnimationFrame(() => scrollRef.current?.scrollTo({ y, animated: false }));
     // 初回表示時のみ実行する（positionedItemsは初回計算のみ参照すれば十分なため依存に含めない）。
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -143,7 +145,11 @@ export default function DayScheduleScreen() {
           ))}
 
           {positionedItems.map((item, index) => {
-            const top = (item.hour + item.minute / 60) * HOUR_HEIGHT;
+            // 応募締切・当選発表・購入期限は「終わりの瞬間」を表す値のため、この時刻を
+            // 1時間の枠の終了として描画する（開始にすると、実際の締切を過ぎてからも
+            // 予定が続いているように見えてしまう）。
+            const blockEnd = (item.hour + item.minute / 60) * HOUR_HEIGHT;
+            const top = blockEnd - (HOUR_HEIGHT - 4);
             const widthPercent = 100 / item.columns;
             return (
               <Pressable

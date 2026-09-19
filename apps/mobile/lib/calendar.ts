@@ -100,14 +100,21 @@ export async function addEventsToCalendar(
       continue;
     }
     if (event.dateIso) {
-      const startDate = new Date(event.dateIso);
-      const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+      // 応募締切・当選発表・購入期限はいずれも「終わりの瞬間」を表す値であり、開始時刻では
+      // ない。そのままstartDateとして1時間後をendDateにすると、実際の締切を過ぎてからも
+      // 予定が続いているように見えてしまう（例: 締切23:59なら23:59〜翌0:59と表示される）。
+      // そのため1時間の枠はこの時刻を「終了」として、その1時間前を開始にする。
+      const endDate = new Date(event.dateIso);
+      const startDate = new Date(endDate.getTime() - 60 * 60 * 1000);
       const eventId = await Calendar.createEventAsync(calendarId, {
         title: event.title,
         startDate,
         endDate,
         notes: event.notes,
-        alarms: [{ relativeOffset: -60 }],
+        // 予定の開始時刻（＝締切等の1時間前）にリマインダーを鳴らす。以前の
+        // 「開始の60分前」（＝締切の2時間前）から実質的な通知タイミングを変えないため、
+        // オフセットは0にする。
+        alarms: [{ relativeOffset: 0 }],
       });
       newEventIds.push(eventId);
     }
