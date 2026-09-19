@@ -204,7 +204,7 @@ export async function scheduleApiLotteryReminders(
 /**
  * 保存済みの実API抽選（LotteryRecord）全件について、現在の通知設定でリマインダーを再スケジュールする。
  *
- * 現状これが呼ばれるのは`components/NotificationSettingsModal.tsx`のuseEffect
+ * 現状これが呼ばれるのは`app/notification-settings/[lotteryId].tsx`のuseEffect
  * （通知設定画面を開いている間、関連する設定/保存済み抽選が変わった時）のみ。
  * アプリ起動時やbootstrap後（他端末で設定が変わっていた場合など）には自動で
  * 呼ばれないため、通知設定画面を一度も開かないと、古い設定のまま予約された

@@ -20,7 +20,6 @@ import {
 import type { StatisticsMonthlyItem, StatisticsStoreItem, StatisticsSummaryResponse } from '@/schemas/statisticsApi';
 import { useAuthStore } from '@/stores/authStore';
 import { useBillingStore } from '@/stores/billingStore';
-import { useGlobalModalStore } from '@/stores/globalModalStore';
 import { useTheme } from '@/theme/useTheme';
 
 const PERIODS = ['月間', '3ヶ月', '年間'] as const;
@@ -93,7 +92,6 @@ export default function StatsScreen() {
   const router = useRouter();
   const authStatus = useAuthStore((s) => s.status);
   const billing = useBillingStore();
-  const openPaywall = useGlobalModalStore((s) => s.openPaywall);
   const isPremium = billing.localEntitlementActive || billing.serverPremiumActive;
 
   const [period, setPeriod] = useState<Period>('月間');
@@ -233,7 +231,7 @@ export default function StatsScreen() {
           icon={<ChartEmptyIcon size={34} color={theme.colors.green} strokeWidth={1.7} />}
           title="プレミアムプランで統計が見られます"
           description="応募・当選実績の推移や店舗別の当選率など、詳しい分析はプレミアムプランでご利用いただけます"
-          action={<PrimaryButton label="プレミアムプランを見る" size="md" onPress={openPaywall} />}
+          action={<PrimaryButton label="プレミアムプランを見る" size="md" onPress={() => router.push('/paywall')} />}
         />
       </ScreenContainer>
     );

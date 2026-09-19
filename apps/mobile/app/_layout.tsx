@@ -6,9 +6,6 @@ import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { ChecklistModal } from '@/components/ChecklistModal';
-import { NotificationSettingsModal } from '@/components/NotificationSettingsModal';
-import { PaywallModal } from '@/components/PaywallModal';
 import { initPostHog } from '@/lib/analytics';
 import { restoreSession } from '@/lib/authActions';
 import { registerCustomerInfoListener } from '@/lib/billingLifecycle';
@@ -147,16 +144,10 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
         <Stack.Screen name="(auth)/sign-in" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="checklist/[lotteryId]" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="notification-settings/[lotteryId]" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
       </Stack>
-      {/*
-        下から出てくる系のUI（Paywall・チェックリスト・通知設定）はexpo-routerの
-        `presentation: 'modal'`画面にはせず、React Native標準の`Modal`コンポーネントとして
-        ここで常時マウントする。開閉は`useGlobalModalStore`経由（呼び出し側は`router.push`
-        ではなく`openPaywall()`等を使う）。
-      */}
-      <PaywallModal />
-      <ChecklistModal />
-      <NotificationSettingsModal />
     </SafeAreaProvider>
   );
 }

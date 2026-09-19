@@ -11,7 +11,6 @@ import { useLotteryStatusSheet } from '@/hooks/useLotteryStatusSheet';
 import { useNowIso } from '@/hooks/useNowIso';
 import { runDifferentialSync } from '@/lib/differentialSync';
 import { processQueue } from '@/lib/offlineQueue';
-import { useGlobalModalStore } from '@/stores/globalModalStore';
 import { useMyLotteriesStore } from '@/stores/myLotteriesStore';
 import { useTheme } from '@/theme/useTheme';
 import { compareLotteriesByTimeline, derivePublicTimelineStatus } from '@/utils/publicLotteryDisplay';
@@ -29,7 +28,6 @@ export default function MyLotteriesScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { saved } = useMyLotteriesStore();
-  const openChecklist = useGlobalModalStore((s) => s.openChecklist);
   const [tab, setTab] = useState<TabKey>('all');
   const [refreshing, setRefreshing] = useState(false);
   const nowIso = useNowIso();
@@ -105,7 +103,7 @@ export default function MyLotteriesScreen() {
               onPress={() => router.push(`/lotteries/${item.record.id}`)}
               secondaryActionLabel="チェックリスト"
               secondaryActionIcon={<CheckIcon size={13} color={theme.colors.green} />}
-              onSecondaryActionPress={() => openChecklist(item.record.id)}
+              onSecondaryActionPress={() => router.push(`/checklist/${item.record.id}`)}
               personalStatus={item.status}
               onPersonalStatusPress={() => openStatusSheet(item)}
             />

@@ -30,7 +30,6 @@ import { openExternalUrl } from '@/lib/url';
 import type { StatisticsMonthlyItem } from '@/schemas/statisticsApi';
 import { useBillingStore } from '@/stores/billingStore';
 import { useFavoritesStore } from '@/stores/favoritesStore';
-import { useGlobalModalStore } from '@/stores/globalModalStore';
 import { useMyLotteriesStore } from '@/stores/myLotteriesStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/theme/useTheme';
@@ -48,7 +47,6 @@ export default function ProfileScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { followedProductKeys } = useFavoritesStore();
-  const { openPaywall, openNotificationSettings } = useGlobalModalStore();
   const { status, user } = useAuthStore();
   const { saved } = useMyLotteriesStore();
   const billing = useBillingStore();
@@ -220,7 +218,7 @@ export default function ProfileScreen() {
           <MenuRow
             icon={<BellIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
             label="通知設定"
-            onPress={openNotificationSettings}
+            onPress={() => router.push('/notification-settings/global')}
           />
           <MenuRow
             icon={<ChartEmptyIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
@@ -230,7 +228,7 @@ export default function ProfileScreen() {
           <MenuRow
             icon={<HeartIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
             label="プレミアムプラン"
-            onPress={openPaywall}
+            onPress={() => router.push('/paywall')}
           />
           <MenuRow
             icon={<ListIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
