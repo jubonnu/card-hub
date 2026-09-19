@@ -137,7 +137,7 @@ function ApiLotteryDetailBody({
     try {
       const { added, alreadyExists } = await addEventsToCalendar(`api-${record.id}`, events);
       if (alreadyExists) {
-        Alert.alert('既に登録済みです', 'この抽選の予定は既に「CardHub」カレンダーに追加されています');
+        Alert.alert('カレンダーを更新しました', `最新の内容で${added}件の予定を「CardHub」カレンダーに登録し直しました`);
       } else {
         Alert.alert('カレンダーに追加しました', `${added}件の予定を「CardHub」カレンダーに登録しました`);
       }
@@ -302,7 +302,7 @@ function MockLotteryDetailScreen({ id }: { id: string }) {
         { title: `【購入期限】${target.productName}`, dateIso: target.purchaseDeadline, notes: target.shopName },
       ]);
       if (alreadyExists) {
-        Alert.alert('既に登録済みです', 'この抽選の予定は既に「CardHub」カレンダーに追加されています');
+        Alert.alert('カレンダーを更新しました', `最新の内容で${added}件の予定を「CardHub」カレンダーに登録し直しました`);
       } else {
         Alert.alert('カレンダーに追加しました', `${added}件の予定を「CardHub」カレンダーに登録しました`);
       }

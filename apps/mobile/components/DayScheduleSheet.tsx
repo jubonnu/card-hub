@@ -1,5 +1,5 @@
 import { useMemo, useRef } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Modal, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/theme/useTheme';
 import {
@@ -11,6 +11,9 @@ import {
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 56;
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+/** これ以上指で下へドラッグしたら、指を離した時点でシートを閉じる（速度が十分あれば距離未達でも閉じる）。 */
+const DISMISS_DRAG_DISTANCE = 120;
+const DISMISS_VELOCITY = 0.8;
 
 interface TimedItem {
   event: LotteryCalendarEvent;
@@ -57,10 +60,33 @@ interface DayScheduleSheetProps {
  * 「自分の抽選」の応募締切・当選発表・購入期限を、iPhoneのカレンダーアプリのような
  * 24時間の縦タイムラインで見せるボトムシート。終日（日付のみ・時刻不明）の予定は
  * 上部に別枠で表示し、実在しない時刻をタイムライン上に置かない。
+ * つまみ・ヘッダー部分を指で下にドラッグすると閉じられる（新規ネイティブ依存を避けるため、
+ * ジェスチャーライブラリではなくReact Native標準のPanResponder/Animatedのみで実装）。
  */
 export function DayScheduleSheet({ visible, dateKey, events, onClose, onSelectEvent }: DayScheduleSheetProps) {
   const theme = useTheme();
   const scrollRef = useRef<ScrollView>(null);
+  const translateY = useRef(new Animated.Value(0)).current;
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 6 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+      onPanResponderMove: (_, gesture) => {
+        if (gesture.dy > 0) translateY.setValue(gesture.dy);
+      },
+      onPanResponderRelease: (_, gesture) => {
+        if (gesture.dy > DISMISS_DRAG_DISTANCE || gesture.vy > DISMISS_VELOCITY) {
+          Animated.timing(translateY, { toValue: 700, duration: 180, useNativeDriver: true }).start(() => {
+            onCloseRef.current();
+          });
+        } else {
+          Animated.spring(translateY, { toValue: 0, useNativeDriver: true, bounciness: 4 }).start();
+        }
+      },
+    })
+  ).current;
 
   const allDayEvents = useMemo(() => events.filter((e) => e.dateOnly), [events]);
   const timedItems = useMemo(
@@ -81,24 +107,30 @@ export function DayScheduleSheet({ visible, dateKey, events, onClose, onSelectEv
   }, [dateKey]);
 
   function handleShow() {
+    translateY.setValue(0);
     const firstHour = positionedItems[0]?.hour ?? 8;
-    const y = Math.max(0, firstHour - 1) * HOUR_HEIGHT;
+    const y = firstHour * HOUR_HEIGHT;
     requestAnimationFrame(() => scrollRef.current?.scrollTo({ y, animated: false }));
   }
 
   return (
     <Modal visible={visible} transparent animationType="slide" onShow={handleShow} onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={[styles.sheet, { backgroundColor: theme.colors.surface }]} onPress={() => {}}>
-          <View style={styles.grabberRow}>
-            <View style={[styles.grabber, { backgroundColor: theme.colors.border }]} />
-          </View>
+        <Animated.View
+          style={[styles.sheet, { backgroundColor: theme.colors.surface, transform: [{ translateY }] }]}
+          onStartShouldSetResponder={() => true}
+        >
+          <View {...panResponder.panHandlers}>
+            <View style={styles.grabberRow}>
+              <View style={[styles.grabber, { backgroundColor: theme.colors.border }]} />
+            </View>
 
-          <View style={styles.header}>
-            <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>{dateLabel}</Text>
-            <Pressable hitSlop={10} onPress={onClose}>
-              <Text style={[styles.closeLabel, { color: theme.colors.textSecondary }]}>閉じる</Text>
-            </Pressable>
+            <View style={styles.header}>
+              <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>{dateLabel}</Text>
+              <Pressable hitSlop={10} onPress={onClose}>
+                <Text style={[styles.closeLabel, { color: theme.colors.textSecondary }]}>閉じる</Text>
+              </Pressable>
+            </View>
           </View>
 
           {allDayEvents.length > 0 ? (
@@ -153,7 +185,7 @@ export function DayScheduleSheet({ visible, dateKey, events, onClose, onSelectEv
               })}
             </View>
           </ScrollView>
-        </Pressable>
+        </Animated.View>
       </Pressable>
     </Modal>
   );

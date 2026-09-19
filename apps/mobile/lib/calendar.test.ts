@@ -7,7 +7,8 @@ import { useCalendarEventStore } from '@/stores/calendarEventStore';
 describe('addEventsToCalendar', () => {
   beforeEach(() => {
     vi.mocked(Calendar.createEventAsync).mockClear();
-    useCalendarEventStore.setState({ registeredKeys: [] });
+    vi.mocked(Calendar.deleteEventAsync).mockClear();
+    useCalendarEventStore.setState({ eventIdsByKey: {} });
   });
 
   it('dateIso（時刻あり）は1時間の予定として登録する', async () => {
@@ -32,13 +33,17 @@ describe('addEventsToCalendar', () => {
     expect((params.endDate as Date).toISOString()).toBe('2026-07-26T15:00:00.000Z');
   });
 
-  it('同じlotteryKeyへの再追加は重複登録しない', async () => {
-    await addEventsToCalendar('lottery-3', [{ title: '【応募締切】テスト', dateOnly: '2026-07-26', notes: undefined }]);
+  it('同じlotteryKeyへ再追加すると、古い予定を削除してから最新の内容で作り直す（内容修正後の再登録で重複・古い内容の予定が残らないように）', async () => {
+    const first = await addEventsToCalendar('lottery-3', [{ title: '【応募締切】テスト', dateOnly: '2026-07-26', notes: undefined }]);
+    expect(first).toEqual({ added: 1, alreadyExists: false });
+    const firstEventId = vi.mocked(Calendar.createEventAsync).mock.results[0]!.value;
+
     vi.mocked(Calendar.createEventAsync).mockClear();
 
-    const result = await addEventsToCalendar('lottery-3', [{ title: '【応募締切】テスト', dateOnly: '2026-07-26', notes: undefined }]);
+    const second = await addEventsToCalendar('lottery-3', [{ title: '【応募締切】テスト（更新後）', dateOnly: '2026-07-27', notes: undefined }]);
 
-    expect(result).toEqual({ added: 0, alreadyExists: true });
-    expect(Calendar.createEventAsync).not.toHaveBeenCalled();
+    expect(second).toEqual({ added: 1, alreadyExists: true });
+    expect(Calendar.deleteEventAsync).toHaveBeenCalledWith(await firstEventId);
+    expect(Calendar.createEventAsync).toHaveBeenCalledTimes(1);
   });
 });

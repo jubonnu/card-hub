@@ -70,12 +70,14 @@ vi.mock('react-native', () => ({
  * lib/calendar.tsが呼ぶexpo-calendarもネイティブ専用モジュールのため、他と同じくモック化する。
  * 各テストは`vi.mocked(Calendar.createEventAsync)`等で呼び出し内容を検証できる。
  */
+let mockEventIdCounter = 0;
 vi.mock('expo-calendar', () => ({
   requestCalendarPermissionsAsync: vi.fn(async () => ({ status: 'granted' })),
   getCalendarsAsync: vi.fn(async () => []),
   getDefaultCalendarAsync: vi.fn(async () => ({ source: { id: 'mock-source' } })),
   createCalendarAsync: vi.fn(async () => 'mock-calendar-id'),
-  createEventAsync: vi.fn(async () => 'mock-event-id'),
+  createEventAsync: vi.fn(async () => `mock-event-id-${(mockEventIdCounter += 1)}`),
+  deleteEventAsync: vi.fn(async () => undefined),
   EntityTypes: { EVENT: 'event' },
   CalendarAccessLevel: { OWNER: 'owner' },
 }));

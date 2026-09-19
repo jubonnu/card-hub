@@ -66,47 +66,54 @@ export interface CalendarEventInput {
 /**
  * 指定した日時のイベントをCardHub専用カレンダーへ追加する。
  * 権限が無い場合は何もせず false を返す（呼び出し側でUI表示する）。
- * `lotteryKey` 単位で登録済みかを記録し、同じ抽選への再追加では重複登録しない。
+ * `lotteryKey`単位で以前作成した予定のIDを記録しており、再追加時はそれらを
+ * 先に削除してから作り直す（内容修正後の再登録で重複・古い内容の予定が残らないようにするため）。
  */
 export async function addEventsToCalendar(
   lotteryKey: string,
   events: CalendarEventInput[]
 ): Promise<{ added: number; alreadyExists: boolean }> {
-  if (useCalendarEventStore.getState().isRegistered(lotteryKey)) {
-    return { added: 0, alreadyExists: true };
+  const previousEventIds = useCalendarEventStore.getState().getRegisteredEventIds(lotteryKey);
+  const alreadyExists = previousEventIds.length > 0;
+  for (const eventId of previousEventIds) {
+    try {
+      await Calendar.deleteEventAsync(eventId);
+    } catch {
+      // 既にユーザーが手動で削除している等のケースは無視して続行する。
+    }
   }
 
   const calendarId = await getOrCreateCardHubCalendarId();
-  let added = 0;
+  const newEventIds: string[] = [];
 
   for (const event of events) {
     if (event.dateOnly) {
       const jstMidnightUtcMs = new Date(`${event.dateOnly}T00:00:00.000Z`).getTime() - JST_OFFSET_HOURS * 60 * 60 * 1000;
-      await Calendar.createEventAsync(calendarId, {
+      const eventId = await Calendar.createEventAsync(calendarId, {
         title: event.title,
         startDate: new Date(jstMidnightUtcMs),
         endDate: new Date(jstMidnightUtcMs + 24 * 60 * 60 * 1000),
         allDay: true,
         notes: event.notes,
       });
-      added += 1;
+      newEventIds.push(eventId);
       continue;
     }
     if (event.dateIso) {
       const startDate = new Date(event.dateIso);
       const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
-      await Calendar.createEventAsync(calendarId, {
+      const eventId = await Calendar.createEventAsync(calendarId, {
         title: event.title,
         startDate,
         endDate,
         notes: event.notes,
         alarms: [{ relativeOffset: -60 }],
       });
-      added += 1;
+      newEventIds.push(eventId);
     }
   }
 
-  if (added > 0) useCalendarEventStore.getState().markRegistered(lotteryKey);
+  useCalendarEventStore.getState().setRegisteredEventIds(lotteryKey, newEventIds);
 
-  return { added, alreadyExists: false };
+  return { added: newEventIds.length, alreadyExists };
 }
