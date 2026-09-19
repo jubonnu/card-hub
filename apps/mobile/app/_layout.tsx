@@ -147,6 +147,7 @@ export default function RootLayout() {
         <Stack.Screen name="checklist/[lotteryId]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="notification-settings/[lotteryId]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="day-schedule/[date]" options={{ presentation: 'modal' }} />
       </Stack>
     </SafeAreaProvider>
   );

@@ -3,7 +3,6 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BackIcon } from '@/components/icons';
-import { DayScheduleSheet } from '@/components/DayScheduleSheet';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { useMyLotteriesStore } from '@/stores/myLotteriesStore';
 import { useTheme } from '@/theme/useTheme';
@@ -34,7 +33,6 @@ export default function CalendarScreen() {
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => toDateKey(today), [today]);
   const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
-  const [sheetDateKey, setSheetDateKey] = useState<string | null>(null);
 
   const eventsByDate = useMemo(() => {
     const map = new Map<string, LotteryCalendarEvent[]>();
@@ -67,13 +65,6 @@ export default function CalendarScreen() {
   function goToToday() {
     setViewDate(new Date(today.getFullYear(), today.getMonth(), 1));
   }
-
-  function handleSelectEvent(event: LotteryCalendarEvent) {
-    setSheetDateKey(null);
-    router.push(`/lotteries/${event.lotteryId}`);
-  }
-
-  const sheetEvents = sheetDateKey ? (eventsByDate.get(sheetDateKey) ?? []) : [];
 
   return (
     <ScreenContainer style={{ backgroundColor: theme.colors.surface }}>
@@ -128,7 +119,11 @@ export default function CalendarScreen() {
             const kindsPresent = DOT_ORDER.filter((kind) => dayEvents.some((e) => e.kind === kind));
 
             return (
-              <Pressable key={key} style={styles.cell} onPress={() => setSheetDateKey(key)}>
+              <Pressable
+                key={key}
+                style={styles.cell}
+                onPress={() => router.push(`/day-schedule/${key}` as Parameters<typeof router.push>[0])}
+              >
                 <View style={[styles.dayCircle, isToday && { backgroundColor: theme.colors.green }]}>
                   <Text
                     style={[
@@ -169,14 +164,6 @@ export default function CalendarScreen() {
           ))}
         </View>
       </ScrollView>
-
-      <DayScheduleSheet
-        visible={sheetDateKey !== null}
-        dateKey={sheetDateKey}
-        events={sheetEvents}
-        onClose={() => setSheetDateKey(null)}
-        onSelectEvent={handleSelectEvent}
-      />
     </ScreenContainer>
   );
 }
