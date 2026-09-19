@@ -2,6 +2,7 @@ import * as Calendar from 'expo-calendar';
 import { Platform } from 'react-native';
 
 import { useCalendarEventStore } from '@/stores/calendarEventStore';
+import { JST_OFFSET_HOURS } from '@/utils/time';
 
 const CARDHUB_CALENDAR_NAME = 'CardHub';
 
@@ -52,8 +53,14 @@ export async function getOrCreateCardHubCalendarId(): Promise<string> {
 
 export interface CalendarEventInput {
   title: string;
-  dateIso: string;
   notes?: string;
+  /** 時刻まで分かっている場合。1時間の予定として登録する。`dateOnly`と排他。 */
+  dateIso?: string;
+  /**
+   * 日付のみしか分からない場合（"YYYY-MM-DD"、JSTの日付）。何時か分からないのに
+   * 特定の時刻の予定にすると誤った精度を与えてしまうため、その日いっぱいの終日イベントとして登録する。
+   */
+  dateOnly?: string;
 }
 
 /**
@@ -73,16 +80,30 @@ export async function addEventsToCalendar(
   let added = 0;
 
   for (const event of events) {
-    const startDate = new Date(event.dateIso);
-    const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
-    await Calendar.createEventAsync(calendarId, {
-      title: event.title,
-      startDate,
-      endDate,
-      notes: event.notes,
-      alarms: [{ relativeOffset: -60 }],
-    });
-    added += 1;
+    if (event.dateOnly) {
+      const jstMidnightUtcMs = new Date(`${event.dateOnly}T00:00:00.000Z`).getTime() - JST_OFFSET_HOURS * 60 * 60 * 1000;
+      await Calendar.createEventAsync(calendarId, {
+        title: event.title,
+        startDate: new Date(jstMidnightUtcMs),
+        endDate: new Date(jstMidnightUtcMs + 24 * 60 * 60 * 1000),
+        allDay: true,
+        notes: event.notes,
+      });
+      added += 1;
+      continue;
+    }
+    if (event.dateIso) {
+      const startDate = new Date(event.dateIso);
+      const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+      await Calendar.createEventAsync(calendarId, {
+        title: event.title,
+        startDate,
+        endDate,
+        notes: event.notes,
+        alarms: [{ relativeOffset: -60 }],
+      });
+      added += 1;
+    }
   }
 
   if (added > 0) useCalendarEventStore.getState().markRegistered(lotteryKey);

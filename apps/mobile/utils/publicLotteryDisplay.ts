@@ -1,5 +1,5 @@
 import type { LotteryRecord } from '@/schemas/lotteryApi';
-import { formatDateTimeShort, formatMonthDayWeekday, formatRemaining, isPast, normalizeDeadline } from '@/utils/time';
+import { formatDateTimeShort, formatMonthDayWeekday, formatRemaining, isBareDateOnly, isPast, normalizeDeadline } from '@/utils/time';
 
 /**
  * 実API（GET /lotteries）が返す抽選レコードは、Phase-Aのモック `LotteryStatus`
@@ -157,9 +157,11 @@ function firstNonEmpty(...values: (string | null | undefined)[]): string | null 
  * `_date`のみの値を`new Date()`へ直接渡すと**UTC 0時**として解釈され、JST表示では実際には
  * 存在しない時刻（例: 09:00）が表示されてしまう（`normalizeDeadline`のコメント参照）ため、
  * 締切等の日時を画面表示する箇所は必ずこの関数を経由すること。
+ * `purchaseDeadlineAt`等、専用の`_date`カラムを持たない項目は`at`自体が時刻無しの日付文字列
+ * （`isBareDateOnly`）になることがあるため、その場合も時刻なし表示にフォールバックする。
  */
 export function formatAtOrDateOnly(at: string | null, dateOnly: string | null): string | null {
-  if (at) return formatDateTimeShort(at);
+  if (at) return isBareDateOnly(at) ? formatMonthDayWeekday(at) : formatDateTimeShort(at);
   if (dateOnly) return formatMonthDayWeekday(dateOnly);
   return null;
 }
@@ -177,7 +179,7 @@ export function formatDateRangeOrSingle(
   const endText = formatAtOrDateOnly(endAt, endDateOnly);
   if (!endText) return null;
   if (!startAt) return endText;
-  const startText = formatDateTimeShort(startAt);
+  const startText = isBareDateOnly(startAt) ? formatMonthDayWeekday(startAt) : formatDateTimeShort(startAt);
   if (!startText || startText === endText) return endText;
   return `${startText} 〜 ${endText}`;
 }

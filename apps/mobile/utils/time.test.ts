@@ -1,6 +1,21 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatRemaining, isPast, normalizeDeadline } from './time';
+import { formatRemaining, isBareDateOnly, isPast, normalizeDeadline } from './time';
+
+describe('isBareDateOnly', () => {
+  it('"YYYY-MM-DD"形式の日付のみ文字列はtrue', () => {
+    expect(isBareDateOnly('2026-09-20')).toBe(true);
+  });
+
+  it('時刻付きISO文字列はfalse', () => {
+    expect(isBareDateOnly('2026-09-20T00:00:00.000Z')).toBe(false);
+  });
+
+  it('null/undefinedはfalse', () => {
+    expect(isBareDateOnly(null)).toBe(false);
+    expect(isBareDateOnly(undefined)).toBe(false);
+  });
+});
 
 describe('normalizeDeadline', () => {
   it('_atがあればそれをそのまま返す（_dateは無視）', () => {

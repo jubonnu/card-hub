@@ -58,6 +58,29 @@ vi.mock('expo-notifications', () => ({
 }));
 
 /**
+ * lib/calendar.tsが`Platform`をimportしているが、実体の'react-native'（Flow構文を含む）は
+ * vitest（esbuild/rolldown経由）ではパースできない。他のネイティブ専用モジュールと同じ理由で
+ * `Platform`のみモック化する（`OS`は既定で'ios'。個別テストで`vi.mocked`で上書き可能）。
+ */
+vi.mock('react-native', () => ({
+  Platform: { OS: 'ios', select: (obj: Record<string, unknown>) => obj.ios },
+}));
+
+/**
+ * lib/calendar.tsが呼ぶexpo-calendarもネイティブ専用モジュールのため、他と同じくモック化する。
+ * 各テストは`vi.mocked(Calendar.createEventAsync)`等で呼び出し内容を検証できる。
+ */
+vi.mock('expo-calendar', () => ({
+  requestCalendarPermissionsAsync: vi.fn(async () => ({ status: 'granted' })),
+  getCalendarsAsync: vi.fn(async () => []),
+  getDefaultCalendarAsync: vi.fn(async () => ({ source: { id: 'mock-source' } })),
+  createCalendarAsync: vi.fn(async () => 'mock-calendar-id'),
+  createEventAsync: vi.fn(async () => 'mock-event-id'),
+  EntityTypes: { EVENT: 'event' },
+  CalendarAccessLevel: { OWNER: 'owner' },
+}));
+
+/**
  * G4: react-native-purchasesはネイティブモジュールのため、vitest（Node環境）では動作しない。
  * 各テストは`vi.mocked(Purchases.xxx).mockResolvedValue(...)`等で個別の戻り値を設定できる。
  */

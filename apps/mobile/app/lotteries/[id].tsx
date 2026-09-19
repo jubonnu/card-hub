@@ -15,10 +15,11 @@ import { lotteries } from '@/data/mockData';
 import { useApiRequest } from '@/hooks/useApiRequest';
 import { useNowIso } from '@/hooks/useNowIso';
 import { fetchLotteryById, getApiErrorCopy } from '@/lib/apiClient';
-import { addEventsToCalendar, ensureCalendarPermission } from '@/lib/calendar';
+import { addEventsToCalendar, ensureCalendarPermission, type CalendarEventInput } from '@/lib/calendar';
 import { cancelLotteryReminders, ensureNotificationPermission, scheduleApiLotteryReminders } from '@/lib/notifications';
 import { openExternalUrl } from '@/lib/url';
 import type { LotteryRecord } from '@/schemas/lotteryApi';
+import { getLotteryCalendarEvents, LOTTERY_CALENDAR_EVENT_LABEL } from '@/utils/lotteryCalendarEvents';
 import { useMyLotteriesStore } from '@/stores/myLotteriesStore';
 import { useNotificationSettingsStore } from '@/stores/notificationSettingsStore';
 import { useTheme } from '@/theme/useTheme';
@@ -103,8 +104,6 @@ function ApiLotteryDetailBody({
   const urls = getApplicationUrls(record);
   const url = urls[0] ?? null;
   const hasAnyDate = Boolean(deadline || announce || record.purchaseDeadlineAt);
-  const productName = getDisplayProductName(record);
-  const shopName = getDisplayShopName(record);
   const saved = isSaved(record.id);
 
   async function handleToggleSaved() {
@@ -128,13 +127,12 @@ function ApiLotteryDetailBody({
       Alert.alert('カレンダーへのアクセスが許可されていません', '端末の設定からカレンダーへのアクセスを許可してください');
       return;
     }
-    const events = [
-      deadline ? { title: `【応募締切】${productName}`, dateIso: deadline, notes: shopName } : null,
-      announce ? { title: `【当選発表】${productName}`, dateIso: announce, notes: shopName } : null,
-      record.purchaseDeadlineAt
-        ? { title: `【購入期限】${productName}`, dateIso: record.purchaseDeadlineAt, notes: shopName }
-        : null,
-    ].filter((e): e is { title: string; dateIso: string; notes: string } => e !== null);
+    const events: CalendarEventInput[] = getLotteryCalendarEvents(record).map((e) => ({
+      title: `【${LOTTERY_CALENDAR_EVENT_LABEL[e.kind]}】${e.productName}`,
+      dateIso: e.dateIso,
+      dateOnly: e.dateOnly,
+      notes: e.shopName,
+    }));
 
     try {
       const { added, alreadyExists } = await addEventsToCalendar(`api-${record.id}`, events);

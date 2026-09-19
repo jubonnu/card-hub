@@ -1,9 +1,20 @@
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
 /** Asia/Tokyoは夏時間（DST）が無いため、常にUTC+9固定として扱う。 */
-const JST_OFFSET_HOURS = 9;
+export const JST_OFFSET_HOURS = 9;
 /** UTC 0時（＝ある日付の日付のみ表現）から、日本時間で見た「翌日0時」に到達するまでの時間。 */
 const HOURS_UNTIL_JST_NEXT_DAY_FROM_UTC_MIDNIGHT_MS = (24 - JST_OFFSET_HOURS) * 60 * 60 * 1000;
+
+/**
+ * `purchaseStartAt`/`purchaseDeadlineAt`等、専用の「日付のみ」カラムを持たない項目は、
+ * 時刻が不明な場合に`_at`カラム自体へ時刻無しの日付文字列（"YYYY-MM-DD"）がそのまま
+ * 入ることがある（バックエンド`x-post-fetcher`側の`isBareDateOnly`と同じ判定基準）。
+ * これを`new Date()`にそのまま渡すとUTC 0時（＝日本時間9:00）という実在しない時刻に
+ * 解釈されてしまうため、表示・カレンダー登録の前に必ずこの判定を経由すること。
+ */
+export function isBareDateOnly(value: string | null | undefined): boolean {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
 
 /**
  * 締切・当選発表日の「時刻付き（`_at`）」と「日付のみ（`_date`、例: "2026-07-26"）」の

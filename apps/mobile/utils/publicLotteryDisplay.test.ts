@@ -77,6 +77,10 @@ describe('formatAtOrDateOnly', () => {
   it('どちらも無ければnull', () => {
     expect(formatAtOrDateOnly(null, null)).toBeNull();
   });
+
+  it('専用の_dateカラムを持たない項目（purchaseDeadlineAt等）は、_at自体が時刻無しの日付文字列になることがある。その場合も実在しない時刻を作らず日付のみ表示する', () => {
+    expect(formatAtOrDateOnly('2026-08-06', null)).toBe('8/6 (木)');
+  });
 });
 
 describe('formatDateRangeOrSingle', () => {
@@ -104,6 +108,10 @@ describe('formatDateRangeOrSingle', () => {
 
   it('開始日時がundefined（フィールド自体が無いレスポンス）でも動作する', () => {
     expect(formatDateRangeOrSingle(undefined, '2026-08-13T14:59:00.000Z', null)).toBe('8/13 (木) 23:59');
+  });
+
+  it('開始側が専用の_dateカラムを持たない項目の時刻無し日付文字列（purchaseStartAt等）でも、実在しない時刻を作らず日付のみ表示する', () => {
+    expect(formatDateRangeOrSingle('2026-08-11', '2026-08-13T14:59:00.000Z', null)).toBe('8/11 (火) 〜 8/13 (木) 23:59');
   });
 });
 
