@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'expo-router';
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
-import { BackIcon, ChevronRightIcon, ClockIcon, MoonIcon, TrophyIcon } from '@/components/icons';
+import { ChevronRightIcon, ClockIcon, MoonIcon, TrophyIcon } from '@/components/icons';
 import { QuietHoursTimePickerModal } from '@/components/QuietHoursTimePickerModal';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { ensureNotificationPermission, rescheduleAllApiReminders } from '@/lib/notifications';
+import { useGlobalModalStore } from '@/stores/globalModalStore';
 import { useMyLotteriesStore } from '@/stores/myLotteriesStore';
 import {
   useNotificationSettingsStore,
@@ -35,9 +35,17 @@ function formatHours(hours: number): string {
  * ここにトグルを復活させるだけで良い。
  */
 
-export default function NotificationSettingsScreen() {
+/**
+ * 通知設定モーダル（アプリ全体共通の設定。抽選ごとの個別設定ではない）。
+ * `app/notification-settings/[lotteryId].tsx`（expo-routerの`presentation: 'modal'`画面）
+ * ではなくReact Native標準の`Modal`として実装している。`[lotteryId]`という動的セグメントが
+ * 元々あったが画面内では未使用（設定は常に`useNotificationSettingsStore`のグローバル1つ）
+ * だったため、このモーダルにパラメータは無い。
+ */
+export function NotificationSettingsModal() {
   const theme = useTheme();
-  const router = useRouter();
+  const visible = useGlobalModalStore((s) => s.notificationSettingsOpen);
+  const closeNotificationSettings = useGlobalModalStore((s) => s.closeNotificationSettings);
   const settings = useNotificationSettingsStore();
   const { saved } = useMyLotteriesStore();
   const deniedAlertShownRef = useRef(false);
@@ -57,6 +65,7 @@ export default function NotificationSettingsScreen() {
   // 権限が拒否されている場合、この画面滞在中に何度も設定を変更してもアラートが連発しないよう、
   // 表示済みかどうかを deniedAlertShownRef で1回だけに抑える。
   useEffect(() => {
+    if (!visible) return;
     let cancelled = false;
     ensureNotificationPermission().then((granted) => {
       if (cancelled) return;
@@ -72,6 +81,7 @@ export default function NotificationSettingsScreen() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    visible,
     saved,
     settings.pushEnabled,
     settings.deadlineReminder,
@@ -86,106 +96,113 @@ export default function NotificationSettingsScreen() {
   ]);
 
   return (
-    <ScreenContainer edges={['top', 'bottom']}>
-      <View style={styles.header}>
-        <Pressable hitSlop={8} style={styles.iconButton} onPress={() => router.back()}>
-          <BackIcon size={22} color={theme.colors.textPrimary} />
-        </Pressable>
-        <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]} numberOfLines={1}>
-          通知設定
-        </Text>
-        <View style={styles.iconButton} />
-      </View>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : undefined}
+      onRequestClose={closeNotificationSettings}
+    >
+      <ScreenContainer edges={['top', 'bottom']}>
+        <View style={styles.header}>
+          <View style={styles.iconButton} />
+          <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+            通知設定
+          </Text>
+          <Pressable hitSlop={8} style={styles.iconButton} onPress={closeNotificationSettings}>
+            <Text style={[styles.closeLabel, { color: theme.colors.textSecondary }]}>閉じる</Text>
+          </Pressable>
+        </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Section title="通知のマスター設定">
-          <ToggleRow
-            icon={<ClockIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
-            label="アプリの通知"
-            description="OFFにすると、下の設定に関わらず新しい通知を作りません（既存の予約分も取り消されます）"
-            value={settings.pushEnabled}
-            onChange={() => toggle('pushEnabled')}
-            last
-          />
-        </Section>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <Section title="通知のマスター設定">
+            <ToggleRow
+              icon={<ClockIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
+              label="アプリの通知"
+              description="OFFにすると、下の設定に関わらず新しい通知を作りません（既存の予約分も取り消されます）"
+              value={settings.pushEnabled}
+              onChange={() => toggle('pushEnabled')}
+              last
+            />
+          </Section>
 
-        <Section title="通知の種類">
-          <ToggleRow
-            icon={<ClockIcon size={20} color={theme.colors.event.deadline.color} strokeWidth={1.9} />}
-            label="締切リマインド"
-            description="応募締切の前に通知"
-            value={settings.deadlineReminder}
-            onChange={() => toggle('deadlineReminder')}
-          />
-          <ToggleRow
-            icon={<TrophyIcon size={20} color={theme.colors.event.announcement.color} strokeWidth={1.9} />}
-            label="当選発表リマインド"
-            description="当選発表の前に通知"
-            value={settings.announcementReminder}
-            onChange={() => toggle('announcementReminder')}
-          />
-          <ToggleRow
-            icon={<ClockIcon size={20} color={theme.colors.event.purchase.color} strokeWidth={1.9} />}
-            label="購入期限リマインド"
-            description="購入期限の前に通知"
-            value={settings.purchaseReminder}
-            onChange={() => toggle('purchaseReminder')}
-            last
-          />
-        </Section>
+          <Section title="通知の種類">
+            <ToggleRow
+              icon={<ClockIcon size={20} color={theme.colors.event.deadline.color} strokeWidth={1.9} />}
+              label="締切リマインド"
+              description="応募締切の前に通知"
+              value={settings.deadlineReminder}
+              onChange={() => toggle('deadlineReminder')}
+            />
+            <ToggleRow
+              icon={<TrophyIcon size={20} color={theme.colors.event.announcement.color} strokeWidth={1.9} />}
+              label="当選発表リマインド"
+              description="当選発表の前に通知"
+              value={settings.announcementReminder}
+              onChange={() => toggle('announcementReminder')}
+            />
+            <ToggleRow
+              icon={<ClockIcon size={20} color={theme.colors.event.purchase.color} strokeWidth={1.9} />}
+              label="購入期限リマインド"
+              description="購入期限の前に通知"
+              value={settings.purchaseReminder}
+              onChange={() => toggle('purchaseReminder')}
+              last
+            />
+          </Section>
 
-        <Section title="通知タイミング">
-          <ValueRow
-            label="締切リマインド"
-            value={formatHours(settings.deadlineReminderHoursBefore)}
-            onPress={() =>
-              settings.setHours('deadlineReminderHoursBefore', nextPreset(settings.deadlineReminderHoursBefore))
-            }
-          />
-          <ValueRow
-            label="当選発表リマインド"
-            value={formatHours(settings.announcementReminderHoursBefore)}
-            onPress={() =>
-              settings.setHours(
-                'announcementReminderHoursBefore',
-                nextPreset(settings.announcementReminderHoursBefore)
-              )
-            }
-          />
-          <ValueRow
-            label="購入期限リマインド"
-            value={formatHours(settings.purchaseReminderHoursBefore)}
-            onPress={() => settings.setHours('purchaseReminderHoursBefore', nextPreset(settings.purchaseReminderHoursBefore))}
-            last
-          />
-        </Section>
+          <Section title="通知タイミング">
+            <ValueRow
+              label="締切リマインド"
+              value={formatHours(settings.deadlineReminderHoursBefore)}
+              onPress={() =>
+                settings.setHours('deadlineReminderHoursBefore', nextPreset(settings.deadlineReminderHoursBefore))
+              }
+            />
+            <ValueRow
+              label="当選発表リマインド"
+              value={formatHours(settings.announcementReminderHoursBefore)}
+              onPress={() =>
+                settings.setHours(
+                  'announcementReminderHoursBefore',
+                  nextPreset(settings.announcementReminderHoursBefore)
+                )
+              }
+            />
+            <ValueRow
+              label="購入期限リマインド"
+              value={formatHours(settings.purchaseReminderHoursBefore)}
+              onPress={() => settings.setHours('purchaseReminderHoursBefore', nextPreset(settings.purchaseReminderHoursBefore))}
+              last
+            />
+          </Section>
 
-        <Section title="おやすみモード">
-          <ToggleRow
-            icon={<MoonIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
-            label="おやすみモード"
-            description="指定時間は通知しない（時間帯にかかる通知は前後にずらします）"
-            value={settings.quietHoursEnabled}
-            onChange={() => toggle('quietHoursEnabled')}
-          />
-          <ValueRow
-            label="時間帯"
-            value={`${settings.quietHoursStart} – ${settings.quietHoursEnd}`}
-            onPress={() => setPickerVisible(true)}
-            disabled={!settings.quietHoursEnabled}
-            last
-          />
-        </Section>
-      </ScrollView>
+          <Section title="おやすみモード">
+            <ToggleRow
+              icon={<MoonIcon size={20} color={theme.colors.textSecondary} strokeWidth={1.9} />}
+              label="おやすみモード"
+              description="指定時間は通知しない（時間帯にかかる通知は前後にずらします）"
+              value={settings.quietHoursEnabled}
+              onChange={() => toggle('quietHoursEnabled')}
+            />
+            <ValueRow
+              label="時間帯"
+              value={`${settings.quietHoursStart} – ${settings.quietHoursEnd}`}
+              onPress={() => setPickerVisible(true)}
+              disabled={!settings.quietHoursEnabled}
+              last
+            />
+          </Section>
+        </ScrollView>
 
-      <QuietHoursTimePickerModal
-        visible={pickerVisible}
-        initialStart={settings.quietHoursStart ?? '22:00'}
-        initialEnd={settings.quietHoursEnd ?? '07:00'}
-        onClose={() => setPickerVisible(false)}
-        onConfirm={(start, end) => settings.setQuietHours(start, end)}
-      />
-    </ScreenContainer>
+        <QuietHoursTimePickerModal
+          visible={pickerVisible}
+          initialStart={settings.quietHoursStart ?? '22:00'}
+          initialEnd={settings.quietHoursEnd ?? '07:00'}
+          onClose={() => setPickerVisible(false)}
+          onConfirm={(start, end) => settings.setQuietHours(start, end)}
+        />
+      </ScreenContainer>
+    </Modal>
   );
 }
 
@@ -289,6 +306,10 @@ const styles = StyleSheet.create({
     fontSize: 19,
     fontWeight: '900',
     textAlign: 'center',
+  },
+  closeLabel: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   scrollContent: {
     paddingBottom: 40,
