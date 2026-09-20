@@ -54,13 +54,16 @@ export async function getOrCreateCardHubCalendarId(): Promise<string> {
 export interface CalendarEventInput {
   title: string;
   notes?: string;
-  /** 時刻まで分かっている場合。1時間の予定として登録する。`dateOnly`と排他。 */
-  dateIso?: string;
+  /** 開始・終了とも時刻まで分かっている場合の実際の期間。`dateOnly`とは排他。 */
+  startIso?: string;
+  endIso?: string;
   /**
-   * 日付のみしか分からない場合（"YYYY-MM-DD"、JSTの日付）。何時か分からないのに
-   * 特定の時刻の予定にすると誤った精度を与えてしまうため、その日いっぱいの終日イベントとして登録する。
+   * 時刻が全く分からない場合（"YYYY-MM-DD"、JSTの日付）。何時か分からないのに
+   * 特定の時刻の予定にすると誤った精度を与えてしまうため、終日イベントとして登録する。
+   * `dateOnlyEnd`が無ければ単日、あれば`dateOnly`〜`dateOnlyEnd`（両端含む）の複数日。
    */
   dateOnly?: string;
+  dateOnlyEnd?: string;
 }
 
 /**
@@ -88,33 +91,34 @@ export async function addEventsToCalendar(
 
   for (const event of events) {
     if (event.dateOnly) {
-      const jstMidnightUtcMs = new Date(`${event.dateOnly}T00:00:00.000Z`).getTime() - JST_OFFSET_HOURS * 60 * 60 * 1000;
+      const jstMidnightUtcMs = (dateOnly: string) =>
+        new Date(`${dateOnly}T00:00:00.000Z`).getTime() - JST_OFFSET_HOURS * 60 * 60 * 1000;
+      const startMs = jstMidnightUtcMs(event.dateOnly);
+      // 終日イベントの終了はEventKitの慣習に合わせ、最終日の「翌日の0時」（排他的境界）にする。
+      const endMs = jstMidnightUtcMs(event.dateOnlyEnd ?? event.dateOnly) + 24 * 60 * 60 * 1000;
       const eventId = await Calendar.createEventAsync(calendarId, {
         title: event.title,
-        startDate: new Date(jstMidnightUtcMs),
-        endDate: new Date(jstMidnightUtcMs + 24 * 60 * 60 * 1000),
+        startDate: new Date(startMs),
+        endDate: new Date(endMs),
         allDay: true,
         notes: event.notes,
       });
       newEventIds.push(eventId);
       continue;
     }
-    if (event.dateIso) {
-      // 応募締切・当選発表・購入期限はいずれも「終わりの瞬間」を表す値であり、開始時刻では
-      // ない。そのままstartDateとして1時間後をendDateにすると、実際の締切を過ぎてからも
-      // 予定が続いているように見えてしまう（例: 締切23:59なら23:59〜翌0:59と表示される）。
-      // そのため1時間の枠はこの時刻を「終了」として、その1時間前を開始にする。
-      const endDate = new Date(event.dateIso);
-      const startDate = new Date(endDate.getTime() - 60 * 60 * 1000);
+    if (event.startIso && event.endIso) {
+      const startDate = new Date(event.startIso);
+      const endDate = new Date(event.endIso);
+      const durationMinutes = (endDate.getTime() - startDate.getTime()) / 60000;
       const eventId = await Calendar.createEventAsync(calendarId, {
         title: event.title,
         startDate,
         endDate,
         notes: event.notes,
-        // 予定の開始時刻（＝締切等の1時間前）にリマインダーを鳴らす。以前の
-        // 「開始の60分前」（＝締切の2時間前）から実質的な通知タイミングを変えないため、
-        // オフセットは0にする。
-        alarms: [{ relativeOffset: 0 }],
+        // 実際の締切等の60分前にリマインダーを鳴らす。予定の開始時刻からの相対値
+        // （EventKitの仕様）で表す必要があるため、期間の長さから逆算する
+        // （期間が60分以下の場合は開始時刻ちょうどに鳴らす＝負値にはしない）。
+        alarms: [{ relativeOffset: Math.max(0, durationMinutes - 60) }],
       });
       newEventIds.push(eventId);
     }

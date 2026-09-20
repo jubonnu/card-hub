@@ -7,7 +7,7 @@ import { useMyLotteriesStore } from '@/stores/myLotteriesStore';
 import { useTheme } from '@/theme/useTheme';
 import {
   calendarEventDateKey,
-  calendarEventJstHourMinute,
+  calendarEventTimelineRange,
   getLotteryCalendarEvents,
   LOTTERY_CALENDAR_EVENT_LABEL,
   type LotteryCalendarEvent,
@@ -19,8 +19,8 @@ const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
 interface TimedItem {
   event: LotteryCalendarEvent;
-  hour: number;
-  minute: number;
+  startHour: number;
+  endHour: number;
 }
 
 interface PositionedItem extends TimedItem {
@@ -28,19 +28,16 @@ interface PositionedItem extends TimedItem {
   columns: number;
 }
 
-/** 同じ1時間の予定同士が重なる場合、横に並べて配置できるよう列を割り当てる。 */
+/** 時間帯が重なる予定同士は、横に並べて配置できるよう列を割り当てる。 */
 function layoutTimedItems(items: TimedItem[]): PositionedItem[] {
-  const sorted = [...items].sort((a, b) => a.hour * 60 + a.minute - (b.hour * 60 + b.minute));
+  const sorted = [...items].sort((a, b) => a.startHour - b.startHour);
   const result: PositionedItem[] = [];
   let i = 0;
   while (i < sorted.length) {
     let j = i;
-    let clusterEndMinutes = sorted[i]!.hour * 60 + sorted[i]!.minute + 60;
-    while (j + 1 < sorted.length) {
-      const next = sorted[j + 1]!;
-      const nextStartMinutes = next.hour * 60 + next.minute;
-      if (nextStartMinutes >= clusterEndMinutes) break;
-      clusterEndMinutes = Math.max(clusterEndMinutes, nextStartMinutes + 60);
+    let clusterEnd = sorted[i]!.endHour;
+    while (j + 1 < sorted.length && sorted[j + 1]!.startHour < clusterEnd) {
+      clusterEnd = Math.max(clusterEnd, sorted[j + 1]!.endHour);
       j += 1;
     }
     const cluster = sorted.slice(i, j + 1);
@@ -78,14 +75,15 @@ export default function DayScheduleScreen() {
   }, [saved, date]);
 
   const allDayEvents = useMemo(() => events.filter((e) => e.dateOnly), [events]);
-  const timedItems = useMemo(
-    () =>
-      events
-        .filter((e) => e.dateIso)
-        .map((event) => ({ event, ...calendarEventJstHourMinute(event)! }))
-        .filter((item): item is TimedItem => item.hour !== undefined),
-    [events]
-  );
+  const timedItems = useMemo(() => {
+    if (!date) return [];
+    return events
+      .map((event) => {
+        const range = calendarEventTimelineRange(event, date);
+        return range ? { event, ...range } : null;
+      })
+      .filter((item): item is TimedItem => item !== null);
+  }, [events, date]);
   const positionedItems = useMemo(() => layoutTimedItems(timedItems), [timedItems]);
 
   const dateLabel = useMemo(() => {
@@ -96,10 +94,8 @@ export default function DayScheduleScreen() {
   }, [date]);
 
   useEffect(() => {
-    // 予定は終了時刻の1時間前から描画されるため（下記positionedItems参照）、
-    // スクロール位置もその開始位置に合わせる。
-    const firstHour = positionedItems[0]?.hour ?? 9;
-    const y = Math.max(0, firstHour - 1) * HOUR_HEIGHT;
+    const firstHour = positionedItems[0]?.startHour ?? 9;
+    const y = Math.max(0, firstHour) * HOUR_HEIGHT;
     requestAnimationFrame(() => scrollRef.current?.scrollTo({ y, animated: false }));
     // 初回表示時のみ実行する（positionedItemsは初回計算のみ参照すれば十分なため依存に含めない）。
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -145,11 +141,8 @@ export default function DayScheduleScreen() {
           ))}
 
           {positionedItems.map((item, index) => {
-            // 応募締切・当選発表・購入期限は「終わりの瞬間」を表す値のため、この時刻を
-            // 1時間の枠の終了として描画する（開始にすると、実際の締切を過ぎてからも
-            // 予定が続いているように見えてしまう）。
-            const blockEnd = (item.hour + item.minute / 60) * HOUR_HEIGHT;
-            const top = blockEnd - (HOUR_HEIGHT - 4);
+            const top = item.startHour * HOUR_HEIGHT;
+            const height = Math.max(24, (item.endHour - item.startHour) * HOUR_HEIGHT - 4);
             const widthPercent = 100 / item.columns;
             return (
               <Pressable
@@ -158,6 +151,7 @@ export default function DayScheduleScreen() {
                   styles.timedEvent,
                   {
                     top,
+                    height,
                     left: `${58 + item.column * widthPercent * 0.4}%`,
                     width: `${widthPercent * 0.4}%`,
                     backgroundColor: theme.colors.event[item.event.kind].color,
@@ -240,7 +234,6 @@ const styles = StyleSheet.create({
   },
   timedEvent: {
     position: 'absolute',
-    height: HOUR_HEIGHT - 4,
     borderRadius: 8,
     padding: 6,
   },

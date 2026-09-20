@@ -129,8 +129,10 @@ function ApiLotteryDetailBody({
     }
     const events: CalendarEventInput[] = getLotteryCalendarEvents(record).map((e) => ({
       title: `【${LOTTERY_CALENDAR_EVENT_LABEL[e.kind]}】${e.productName}`,
-      dateIso: e.dateIso,
+      startIso: e.startIso,
+      endIso: e.endIso,
       dateOnly: e.dateOnly,
+      dateOnlyEnd: e.dateOnlyEnd,
       notes: e.shopName,
     }));
 
@@ -296,10 +298,28 @@ function MockLotteryDetailScreen({ id }: { id: string }) {
     }
     try {
       const target = lottery as Lottery;
+      // モックデータは開始時刻を持たないため、実APIのデータで「終了だけ分かる」場合と同じ扱いにする
+      // （その日の0:00〜実際の時刻）。
+      const dayStartOf = (iso: string) => new Date(`${iso.slice(0, 10)}T00:00:00.000+09:00`).toISOString();
       const { added, alreadyExists } = await addEventsToCalendar(`mock-${target.id}`, [
-        { title: `【応募締切】${target.productName}`, dateIso: target.applicationDeadline, notes: target.shopName },
-        { title: `【当選発表】${target.productName}`, dateIso: target.announcementDate, notes: target.shopName },
-        { title: `【購入期限】${target.productName}`, dateIso: target.purchaseDeadline, notes: target.shopName },
+        {
+          title: `【応募締切】${target.productName}`,
+          startIso: dayStartOf(target.applicationDeadline),
+          endIso: target.applicationDeadline,
+          notes: target.shopName,
+        },
+        {
+          title: `【当選発表】${target.productName}`,
+          startIso: dayStartOf(target.announcementDate),
+          endIso: target.announcementDate,
+          notes: target.shopName,
+        },
+        {
+          title: `【購入期限】${target.productName}`,
+          startIso: dayStartOf(target.purchaseDeadline),
+          endIso: target.purchaseDeadline,
+          notes: target.shopName,
+        },
       ]);
       if (alreadyExists) {
         Alert.alert('カレンダーを更新しました', `最新の内容で${added}件の予定を「CardHub」カレンダーに登録し直しました`);
