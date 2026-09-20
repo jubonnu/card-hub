@@ -137,11 +137,12 @@ function ApiLotteryDetailBody({
     }));
 
     try {
-      const { added, alreadyExists } = await addEventsToCalendar(`api-${record.id}`, events);
+      const { added, failed, alreadyExists } = await addEventsToCalendar(`api-${record.id}`, events);
+      const failedNote = failed > 0 ? `（${failed}件は失敗しました。もう一度お試しください）` : '';
       if (alreadyExists) {
-        Alert.alert('カレンダーを更新しました', `最新の内容で${added}件の予定を「CardHub」カレンダーに登録し直しました`);
+        Alert.alert('カレンダーを更新しました', `最新の内容で${added}件の予定を「CardHub」カレンダーに登録し直しました${failedNote}`);
       } else {
-        Alert.alert('カレンダーに追加しました', `${added}件の予定を「CardHub」カレンダーに登録しました`);
+        Alert.alert('カレンダーに追加しました', `${added}件の予定を「CardHub」カレンダーに登録しました${failedNote}`);
       }
     } catch {
       Alert.alert('カレンダーへの追加に失敗しました', 'もう一度お試しください');
@@ -301,7 +302,7 @@ function MockLotteryDetailScreen({ id }: { id: string }) {
       // モックデータは開始時刻を持たないため、実APIのデータで「終了だけ分かる」場合と同じ扱いにする
       // （その日の0:00〜実際の時刻）。
       const dayStartOf = (iso: string) => new Date(`${iso.slice(0, 10)}T00:00:00.000+09:00`).toISOString();
-      const { added, alreadyExists } = await addEventsToCalendar(`mock-${target.id}`, [
+      const { added, failed, alreadyExists } = await addEventsToCalendar(`mock-${target.id}`, [
         {
           title: `【応募締切】${target.productName}`,
           startIso: dayStartOf(target.applicationDeadline),
@@ -321,10 +322,11 @@ function MockLotteryDetailScreen({ id }: { id: string }) {
           notes: target.shopName,
         },
       ]);
+      const failedNote = failed > 0 ? `（${failed}件は失敗しました。もう一度お試しください）` : '';
       if (alreadyExists) {
-        Alert.alert('カレンダーを更新しました', `最新の内容で${added}件の予定を「CardHub」カレンダーに登録し直しました`);
+        Alert.alert('カレンダーを更新しました', `最新の内容で${added}件の予定を「CardHub」カレンダーに登録し直しました${failedNote}`);
       } else {
-        Alert.alert('カレンダーに追加しました', `${added}件の予定を「CardHub」カレンダーに登録しました`);
+        Alert.alert('カレンダーに追加しました', `${added}件の予定を「CardHub」カレンダーに登録しました${failedNote}`);
       }
     } catch {
       Alert.alert('カレンダーへの追加に失敗しました', 'もう一度お試しください');

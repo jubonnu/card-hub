@@ -71,11 +71,17 @@ export interface CalendarEventInput {
  * 権限が無い場合は何もせず false を返す（呼び出し側でUI表示する）。
  * `lotteryKey`単位で以前作成した予定のIDを記録しており、再追加時はそれらを
  * 先に削除してから作り直す（内容修正後の再登録で重複・古い内容の予定が残らないようにするため）。
+ *
+ * 1件ごとに`createEventAsync`をtry/catchで囲み、途中の1件が失敗しても他の登録・記録を
+ * 止めない（以前は1件でも失敗すると例外がそのまま外へ投げられ、既に作成済みの予定が
+ * `useCalendarEventStore`に一切記録されないまま関数を抜けていた。次回の再登録時、
+ * アプリはそれらを「未登録」として扱うため削除できず、カレンダー上に孤立した
+ * 重複予定が残ってしまう不具合があった）。
  */
 export async function addEventsToCalendar(
   lotteryKey: string,
   events: CalendarEventInput[]
-): Promise<{ added: number; alreadyExists: boolean }> {
+): Promise<{ added: number; failed: number; alreadyExists: boolean }> {
   const previousEventIds = useCalendarEventStore.getState().getRegisteredEventIds(lotteryKey);
   const alreadyExists = previousEventIds.length > 0;
   for (const eventId of previousEventIds) {
@@ -88,43 +94,50 @@ export async function addEventsToCalendar(
 
   const calendarId = await getOrCreateCardHubCalendarId();
   const newEventIds: string[] = [];
+  let failed = 0;
 
   for (const event of events) {
-    if (event.dateOnly) {
-      const jstMidnightUtcMs = (dateOnly: string) =>
-        new Date(`${dateOnly}T00:00:00.000Z`).getTime() - JST_OFFSET_HOURS * 60 * 60 * 1000;
-      const startMs = jstMidnightUtcMs(event.dateOnly);
-      // 終日イベントの終了はEventKitの慣習に合わせ、最終日の「翌日の0時」（排他的境界）にする。
-      const endMs = jstMidnightUtcMs(event.dateOnlyEnd ?? event.dateOnly) + 24 * 60 * 60 * 1000;
-      const eventId = await Calendar.createEventAsync(calendarId, {
-        title: event.title,
-        startDate: new Date(startMs),
-        endDate: new Date(endMs),
-        allDay: true,
-        notes: event.notes,
-      });
-      newEventIds.push(eventId);
-      continue;
-    }
-    if (event.startIso && event.endIso) {
-      const startDate = new Date(event.startIso);
-      const endDate = new Date(event.endIso);
-      const durationMinutes = (endDate.getTime() - startDate.getTime()) / 60000;
-      const eventId = await Calendar.createEventAsync(calendarId, {
-        title: event.title,
-        startDate,
-        endDate,
-        notes: event.notes,
-        // 実際の締切等の60分前にリマインダーを鳴らす。予定の開始時刻からの相対値
-        // （EventKitの仕様）で表す必要があるため、期間の長さから逆算する
-        // （期間が60分以下の場合は開始時刻ちょうどに鳴らす＝負値にはしない）。
-        alarms: [{ relativeOffset: Math.max(0, durationMinutes - 60) }],
-      });
-      newEventIds.push(eventId);
+    try {
+      if (event.dateOnly) {
+        const jstMidnightUtcMs = (dateOnly: string) =>
+          new Date(`${dateOnly}T00:00:00.000Z`).getTime() - JST_OFFSET_HOURS * 60 * 60 * 1000;
+        const startMs = jstMidnightUtcMs(event.dateOnly);
+        // 終日イベントの終了はEventKitの慣習に合わせ、最終日の「翌日の0時」（排他的境界）にする。
+        const endMs = jstMidnightUtcMs(event.dateOnlyEnd ?? event.dateOnly) + 24 * 60 * 60 * 1000;
+        const eventId = await Calendar.createEventAsync(calendarId, {
+          title: event.title,
+          startDate: new Date(startMs),
+          endDate: new Date(endMs),
+          allDay: true,
+          notes: event.notes,
+        });
+        newEventIds.push(eventId);
+        continue;
+      }
+      if (event.startIso && event.endIso) {
+        const startDate = new Date(event.startIso);
+        const endDate = new Date(event.endIso);
+        const durationMinutes = (endDate.getTime() - startDate.getTime()) / 60000;
+        const eventId = await Calendar.createEventAsync(calendarId, {
+          title: event.title,
+          startDate,
+          endDate,
+          notes: event.notes,
+          // 実際の締切等の60分前にリマインダーを鳴らす。予定の開始時刻からの相対値
+          // （EventKitの仕様）で表す必要があるため、期間の長さから逆算する
+          // （期間が60分以下の場合は開始時刻ちょうどに鳴らす＝負値にはしない）。
+          alarms: [{ relativeOffset: Math.max(0, durationMinutes - 60) }],
+        });
+        newEventIds.push(eventId);
+      }
+    } catch {
+      failed += 1;
     }
   }
 
+  // 一部が失敗していても、成功した分だけは必ず記録する（そうしないと次回再登録時に
+  // 削除対象として認識できず、孤立した重複予定になってしまう）。
   useCalendarEventStore.getState().setRegisteredEventIds(lotteryKey, newEventIds);
 
-  return { added: newEventIds.length, alreadyExists };
+  return { added: newEventIds.length, failed, alreadyExists };
 }

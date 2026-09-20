@@ -68,15 +68,39 @@ describe('addEventsToCalendar', () => {
 
   it('同じlotteryKeyへ再追加すると、古い予定を削除してから最新の内容で作り直す（内容修正後の再登録で重複・古い内容の予定が残らないように）', async () => {
     const first = await addEventsToCalendar('lottery-3', [{ title: '【応募締切】テスト', dateOnly: '2026-07-26', notes: undefined }]);
-    expect(first).toEqual({ added: 1, alreadyExists: false });
+    expect(first).toEqual({ added: 1, failed: 0, alreadyExists: false });
     const firstEventId = vi.mocked(Calendar.createEventAsync).mock.results[0]!.value;
 
     vi.mocked(Calendar.createEventAsync).mockClear();
 
     const second = await addEventsToCalendar('lottery-3', [{ title: '【応募締切】テスト（更新後）', dateOnly: '2026-07-27', notes: undefined }]);
 
-    expect(second).toEqual({ added: 1, alreadyExists: true });
+    expect(second).toEqual({ added: 1, failed: 0, alreadyExists: true });
     expect(Calendar.deleteEventAsync).toHaveBeenCalledWith(await firstEventId);
     expect(Calendar.createEventAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it('一部のイベント登録が失敗しても、他のイベントの登録・記録は続行する（1件失敗で全体が消えて孤立予定になるのを防ぐ）', async () => {
+    vi.mocked(Calendar.createEventAsync)
+      .mockImplementationOnce(async () => 'event-ok-1')
+      .mockImplementationOnce(async () => {
+        throw new Error('boom');
+      })
+      .mockImplementationOnce(async () => 'event-ok-2');
+
+    const result = await addEventsToCalendar('lottery-4', [
+      { title: '【応募締切】テスト1', dateOnly: '2026-07-26', notes: undefined },
+      { title: '【当選発表】テスト', dateOnly: '2026-07-27', notes: undefined },
+      { title: '【購入期限】テスト', dateOnly: '2026-07-28', notes: undefined },
+    ]);
+
+    expect(result).toEqual({ added: 2, failed: 1, alreadyExists: false });
+
+    // 成功した2件だけは記録され、次回の再登録時に削除対象として認識できる。
+    vi.mocked(Calendar.createEventAsync).mockClear();
+    const second = await addEventsToCalendar('lottery-4', [{ title: '更新後', dateOnly: '2026-08-01', notes: undefined }]);
+    expect(Calendar.deleteEventAsync).toHaveBeenCalledWith('event-ok-1');
+    expect(Calendar.deleteEventAsync).toHaveBeenCalledWith('event-ok-2');
+    expect(second.alreadyExists).toBe(true);
   });
 });
