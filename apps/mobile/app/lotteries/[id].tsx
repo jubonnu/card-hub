@@ -106,6 +106,40 @@ function ApiLotteryDetailBody({
   const hasAnyDate = Boolean(deadline || announce || record.purchaseDeadlineAt);
   const saved = isSaved(record.id);
 
+  /**
+   * 「自分の抽選」とiPhoneカレンダーの表示対象を常に一致させるため、カレンダー登録も
+   * 保存側から呼び出す（`showResultAlert`は明示的に「カレンダーに追加」を押した時だけtrueにし、
+   * 保存のついでに行う暗黙の登録では件数ポップアップを出さない。権限が無い場合の案内は共通で出す）。
+   */
+  async function registerCalendarEvents(showResultAlert: boolean) {
+    const granted = await ensureCalendarPermission();
+    if (!granted) {
+      Alert.alert('カレンダーへのアクセスが許可されていません', '端末の設定からカレンダーへのアクセスを許可してください');
+      return;
+    }
+    const events: CalendarEventInput[] = getLotteryCalendarEvents(record).map((e) => ({
+      title: `【${LOTTERY_CALENDAR_EVENT_LABEL[e.kind]}】${e.productName}`,
+      startIso: e.startIso,
+      endIso: e.endIso,
+      dateOnly: e.dateOnly,
+      dateOnlyEnd: e.dateOnlyEnd,
+      notes: e.shopName,
+    }));
+
+    try {
+      const { added, failed, alreadyExists } = await addEventsToCalendar(`api-${record.id}`, events);
+      if (!showResultAlert) return;
+      const failedNote = failed > 0 ? `（${failed}件は失敗しました。もう一度お試しください）` : '';
+      if (alreadyExists) {
+        Alert.alert('カレンダーを更新しました', `最新の内容で${added}件の予定を「CardHub」カレンダーに登録し直しました${failedNote}`);
+      } else {
+        Alert.alert('カレンダーに追加しました', `${added}件の予定を「CardHub」カレンダーに登録しました${failedNote}`);
+      }
+    } catch {
+      if (showResultAlert) Alert.alert('カレンダーへの追加に失敗しました', 'もう一度お試しください');
+    }
+  }
+
   async function saveAndScheduleReminders() {
     saveLottery(record);
     const granted = await ensureNotificationPermission();
@@ -123,39 +157,16 @@ function ApiLotteryDetailBody({
       return;
     }
     await saveAndScheduleReminders();
+    // ☆での保存だけだとiPhoneカレンダーには登録されず表示がズレるため、ここでも自動登録する
+    // （件数ポップアップは出さず、権限が無い場合の案内のみ出す）。
+    if (hasAnyDate) await registerCalendarEvents(false);
   }
 
   async function handleAddToCalendar() {
-    const granted = await ensureCalendarPermission();
-    if (!granted) {
-      Alert.alert('カレンダーへのアクセスが許可されていません', '端末の設定からカレンダーへのアクセスを許可してください');
-      return;
-    }
     // アプリ内カレンダータブは「自分の抽選」を情報源にしているため、カレンダー登録と
     // 表示の対象を一致させるべく、未追加であればここで自動的に自分の抽選にも追加する。
-    if (!saved) {
-      await saveAndScheduleReminders();
-    }
-    const events: CalendarEventInput[] = getLotteryCalendarEvents(record).map((e) => ({
-      title: `【${LOTTERY_CALENDAR_EVENT_LABEL[e.kind]}】${e.productName}`,
-      startIso: e.startIso,
-      endIso: e.endIso,
-      dateOnly: e.dateOnly,
-      dateOnlyEnd: e.dateOnlyEnd,
-      notes: e.shopName,
-    }));
-
-    try {
-      const { added, failed, alreadyExists } = await addEventsToCalendar(`api-${record.id}`, events);
-      const failedNote = failed > 0 ? `（${failed}件は失敗しました。もう一度お試しください）` : '';
-      if (alreadyExists) {
-        Alert.alert('カレンダーを更新しました', `最新の内容で${added}件の予定を「CardHub」カレンダーに登録し直しました${failedNote}`);
-      } else {
-        Alert.alert('カレンダーに追加しました', `${added}件の予定を「CardHub」カレンダーに登録しました${failedNote}`);
-      }
-    } catch {
-      Alert.alert('カレンダーへの追加に失敗しました', 'もう一度お試しください');
-    }
+    if (!saved) await saveAndScheduleReminders();
+    await registerCalendarEvents(true);
   }
 
   return (
