@@ -106,12 +106,7 @@ function ApiLotteryDetailBody({
   const hasAnyDate = Boolean(deadline || announce || record.purchaseDeadlineAt);
   const saved = isSaved(record.id);
 
-  async function handleToggleSaved() {
-    if (saved) {
-      removeLottery(record.id);
-      await cancelLotteryReminders(String(record.id));
-      return;
-    }
+  async function saveAndScheduleReminders() {
     saveLottery(record);
     const granted = await ensureNotificationPermission();
     if (granted) {
@@ -121,11 +116,25 @@ function ApiLotteryDetailBody({
     }
   }
 
+  async function handleToggleSaved() {
+    if (saved) {
+      removeLottery(record.id);
+      await cancelLotteryReminders(String(record.id));
+      return;
+    }
+    await saveAndScheduleReminders();
+  }
+
   async function handleAddToCalendar() {
     const granted = await ensureCalendarPermission();
     if (!granted) {
       Alert.alert('カレンダーへのアクセスが許可されていません', '端末の設定からカレンダーへのアクセスを許可してください');
       return;
+    }
+    // アプリ内カレンダータブは「自分の抽選」を情報源にしているため、カレンダー登録と
+    // 表示の対象を一致させるべく、未追加であればここで自動的に自分の抽選にも追加する。
+    if (!saved) {
+      await saveAndScheduleReminders();
     }
     const events: CalendarEventInput[] = getLotteryCalendarEvents(record).map((e) => ({
       title: `【${LOTTERY_CALENDAR_EVENT_LABEL[e.kind]}】${e.productName}`,
