@@ -141,3 +141,20 @@ export async function addEventsToCalendar(
 
   return { added: newEventIds.length, failed, alreadyExists };
 }
+
+/**
+ * `lotteryKey`単位で以前登録した予定をすべてカレンダーから削除する。
+ * 「自分の抽選」から削除した際など、アプリ内カレンダーとiPhoneカレンダーの表示対象を
+ * 一致させ続けるために使う。登録が無ければ何もしない。
+ */
+export async function removeEventsFromCalendar(lotteryKey: string): Promise<void> {
+  const eventIds = useCalendarEventStore.getState().getRegisteredEventIds(lotteryKey);
+  for (const eventId of eventIds) {
+    try {
+      await Calendar.deleteEventAsync(eventId);
+    } catch {
+      // 既にユーザーが手動で削除している等のケースは無視して続行する。
+    }
+  }
+  useCalendarEventStore.getState().setRegisteredEventIds(lotteryKey, []);
+}

@@ -1,7 +1,7 @@
 import * as Calendar from 'expo-calendar';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { addEventsToCalendar } from './calendar';
+import { addEventsToCalendar, removeEventsFromCalendar } from './calendar';
 import { useCalendarEventStore } from '@/stores/calendarEventStore';
 
 describe('addEventsToCalendar', () => {
@@ -102,5 +102,33 @@ describe('addEventsToCalendar', () => {
     expect(Calendar.deleteEventAsync).toHaveBeenCalledWith('event-ok-1');
     expect(Calendar.deleteEventAsync).toHaveBeenCalledWith('event-ok-2');
     expect(second.alreadyExists).toBe(true);
+  });
+});
+
+describe('removeEventsFromCalendar', () => {
+  beforeEach(() => {
+    vi.mocked(Calendar.createEventAsync).mockClear();
+    vi.mocked(Calendar.deleteEventAsync).mockClear();
+    useCalendarEventStore.setState({ eventIdsByKey: {} });
+  });
+
+  it('登録済みの予定をすべて削除し、記録も消す（自分の抽選から削除した際に使う）', async () => {
+    await addEventsToCalendar('lottery-5', [
+      { title: '【応募締切】テスト', dateOnly: '2026-07-26', notes: undefined },
+      { title: '【購入期限】テスト', dateOnly: '2026-07-28', notes: undefined },
+    ]);
+    const eventIds = vi.mocked(Calendar.createEventAsync).mock.results.map((r) => r.value);
+
+    await removeEventsFromCalendar('lottery-5');
+
+    for (const eventId of eventIds) {
+      expect(Calendar.deleteEventAsync).toHaveBeenCalledWith(await eventId);
+    }
+    expect(useCalendarEventStore.getState().getRegisteredEventIds('lottery-5')).toEqual([]);
+  });
+
+  it('登録が無い場合は何もしない', async () => {
+    await removeEventsFromCalendar('lottery-none');
+    expect(Calendar.deleteEventAsync).not.toHaveBeenCalled();
   });
 });
