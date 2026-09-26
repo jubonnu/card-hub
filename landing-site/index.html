@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CardHub - 抽選情報をまとめて管理</title>
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+
+
+
+
+<div style="font-family:'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif; color:#101810; background:#FBFAF7; max-width:100%; overflow-x:hidden; -webkit-font-smoothing:antialiased;">
+
+  <!-- Header -->
+  <header style="display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px clamp(32px,8vw,120px); position:fixed; top:0; left:0; right:0; background:rgba(251,250,247,0.82); backdrop-filter:blur(14px) saturate(1.4); z-index:50; border-bottom:1px solid rgba(18,23,15,0.07);">
+    <div style="display:flex; align-items:center; gap:11px;">
+      <img src="assets/images/icon.png" alt="CardHub" width="44" height="44" style="width:44px; height:44px; border-radius:12px; box-shadow:0 4px 14px rgba(14,122,68,0.28); display:block;">
+      <span style="font-size:21px; font-weight:800; letter-spacing:-0.03em;">CardHub</span>
+    </div>
+    <a class="hv-1" href="https://apps.apple.com/jp/app/id6797062944" style="display:inline-flex; align-items:center; gap:8px; background:#101810; color:#fff; font-weight:600; font-size:14px; padding:10px 22px; border-radius:100px; white-space:nowrap; transition:transform .2s ease, box-shadow .2s ease;"><svg width="15" height="15" viewBox="0 0 384 512" fill="currentColor"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.2-52.3.8-108.1 41.7-108.1 124.9 0 24.6 4.5 50 13.5 76.2 12 34 55.1 117.3 100 115.9 23.5-.6 40.1-16.8 70.7-16.8 29.7 0 45.1 16.8 71.3 16.8 45.4-.7 84.4-76.4 95.8-110.5-60.9-28.7-53.1-84.1-53.6-78.6zM255.7 89.5c22.6-26.9 20.5-51.4 19.8-60.5-19.3 1.1-41.7 13.4-54.4 28.5-13.9 15.7-22.1 35.2-20.3 59.2 21.5 1.7 41.3-9.4 54.9-27.2z"></path></svg>App Storeで入手</a>
+  </header>
+
+  <!-- Hero -->
+  <section style="position:relative; padding:120px clamp(32px,8vw,120px) 48px; overflow:hidden; height:100vh; min-height:560px; box-sizing:border-box; display:flex; align-items:flex-start; background:#FFFFFF;">
+    <div style="position:absolute; inset:0; z-index:0;">
+      <!-- image-slot left empty in the original design: 背景画像をドロップ（任意） -->
+      <div style="position:absolute; inset:0; pointer-events:none; background:linear-gradient(100deg, rgba(255,255,255,0.99) 0%, rgba(255,255,255,0.96) 46%, rgba(255,255,255,0.7) 72%, rgba(255,255,255,0.5) 100%);"></div>
+    </div>
+    <div style="position:absolute; top:-160px; right:-140px; width:520px; height:520px; pointer-events:none; border-radius:50%; background:radial-gradient(circle,rgba(20,168,90,0.13),transparent 70%); z-index:0; animation:cardhub-blob 8s ease-in-out infinite;"></div>
+
+    <div style="position:relative; z-index:1; width:100%; max-width:1120px; margin:0 auto; display:flex; align-items:flex-start; justify-content:space-between; gap:clamp(24px,4vw,72px); flex-wrap:wrap; pointer-events:none;">
+
+      <div style="flex:1 1 320px; min-width:280px; text-align:left; pointer-events:auto; align-self:center;">
+        <div style="font-size:15px; font-weight:700; color:#14A85A; margin-bottom:20px; letter-spacing:0.02em;">トレカ抽選の『見失い』と『見えない』を解消</div>
+        <h1 style="font-size:clamp(32px,4.8vw,56px); font-weight:900; line-height:1.28; margin:0 0 32px; letter-spacing:-0.025em; color:#101810;">トレカの抽選応募を<span style="color: rgb(20, 168, 90);">すべて</span><span style="white-space: nowrap;">管理する</span><br><span style="font-weight: 500; font-size: 0.72em; letter-spacing: 0.02em; color: rgb(58, 66, 55);">トレカ抽選アプリ</span><br><span style="font-family: Roboto; font-weight: 700; font-size: 0.78em; letter-spacing: 0.02em; background: linear-gradient(120deg,#101810 0%,#14A85A 100%); -webkit-background-clip: text; background-clip: text; color: transparent; display: inline-block; margin-left: 0.1em">CardHub</span></h1>
+        <a class="hv-2" href="https://apps.apple.com/jp/app/id6797062944" style="display:inline-flex; align-items:center; gap:10px; background:#101810; color:#fff; font-weight:600; font-size:16px; padding:16px 36px; border-radius:100px; box-shadow:0 14px 30px -12px rgba(18,23,15,0.5); transition:transform .22s ease, box-shadow .22s ease;"><svg width="17" height="17" viewBox="0 0 384 512" fill="currentColor"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.2-52.3.8-108.1 41.7-108.1 124.9 0 24.6 4.5 50 13.5 76.2 12 34 55.1 117.3 100 115.9 23.5-.6 40.1-16.8 70.7-16.8 29.7 0 45.1 16.8 71.3 16.8 45.4-.7 84.4-76.4 95.8-110.5-60.9-28.7-53.1-84.1-53.6-78.6zM255.7 89.5c22.6-26.9 20.5-51.4 19.8-60.5-19.3 1.1-41.7 13.4-54.4 28.5-13.9 15.7-22.1 35.2-20.3 59.2 21.5 1.7 41.3-9.4 54.9-27.2z"></path></svg>App Storeでダウンロード</a>
+        <div style="font-size:13px; color:#6B7264; margin-top:20px; letter-spacing:0.04em;">iOS 15.1 以降 / 無料ではじめられます</div>
+      </div>
+
+      <div style="flex:0 1 auto; min-width:0; display:flex; align-items:flex-start; justify-content:flex-start; gap:clamp(6px,1.2vw,20px); position:relative; pointer-events:auto;">
+        <div style="position:absolute; inset:12% -12% 4% -12%; background:linear-gradient(160deg,rgba(20,168,90,0.13),transparent 65%); filter:blur(44px); border-radius:50%; pointer-events:none;"></div>
+        <div style="position:relative; z-index:2; display:flex;"><div style="position:relative; width:clamp(148px,21vw,300px); aspect-ratio:310/632; flex:none; animation:cardhub-float 6s ease-in-out infinite;">
+  <div style="position:absolute; inset:0; background:linear-gradient(150deg,#2C3330 0%,#0B0E0A 45%,#20261F 100%); border-radius:44px; padding:11px; box-sizing:border-box; box-shadow:0 44px 84px -26px rgba(18,23,15,0.4), 0 0 0 1px rgba(255,255,255,0.08) inset;">
+    <div style="position:absolute; left:-3px; top:118px; width:3px; height:30px; border-radius:3px 0 0 3px; background:#1A1F18;"></div>
+    <div style="position:absolute; left:-3px; top:164px; width:3px; height:54px; border-radius:3px 0 0 3px; background:#1A1F18;"></div>
+    <div style="position:absolute; left:-3px; top:232px; width:3px; height:54px; border-radius:3px 0 0 3px; background:#1A1F18;"></div>
+    <div style="position:absolute; right:-3px; top:190px; width:3px; height:84px; border-radius:0 3px 3px 0; background:#1A1F18;"></div>
+    <div style="position:relative; width:100%; height:100%; border-radius:34px; overflow:hidden; background:#fff;">
+      <img src="assets/images/hero-shot.webp" alt="アプリ画面のスクリーンショットをドロップ" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;">
+      <div style="position:absolute; top:9px; left:50%; transform:translateX(-50%); width:29%; height:19px; background:#0B0E0A; border-radius:100px; display:flex; align-items:center; justify-content:flex-end; padding-right:7px; box-sizing:border-box; pointer-events:none;">
+        <div style="width:6px; height:6px; border-radius:100px; background:#1C2620; box-shadow:0 0 0 1px rgba(255,255,255,0.08) inset;"></div>
+      </div>
+    </div>
+  </div>
+</div></div>
+        <div style="position:relative; width:clamp(130px,18vw,264px); flex:none; margin-top:104px; margin-left:8px; animation:cardhub-float 6s ease-in-out infinite; animation-delay:-3s;">
+          <div style="position:absolute; left:0; bottom:calc(100% + 20px); width:100%; text-align:center; pointer-events:none; z-index:3; transform:rotate(18deg) translateX(clamp(24px,5vw,72px));">
+            <span style="position:absolute; left:0; top:28px; width:1.5px; height:46%; background:#101810; opacity:0.6; transform:rotate(-36deg);"></span>
+            <span style="position:absolute; right:-6px; top:28px; width:1.5px; height:46%; background:#101810; opacity:0.6; transform:rotate(36deg);"></span>
+            <div style="font-size:clamp(17px,2.2vw,23px); font-weight:800; line-height:1.35; letter-spacing:-0.01em; background:linear-gradient(100deg,#14A85A,#5FB8C9,#8C7FE0); -webkit-background-clip:text; background-clip:text; color:transparent;">抽選日をカレンダーに<br>連携ができる！</div>
+          </div>
+          <div style="width:100%; aspect-ratio:272/420; transform:rotate(18deg); border-radius:20px; overflow:hidden; box-shadow:0 34px 68px -24px rgba(18,23,15,0.4), 0 0 0 1px rgba(18,23,15,0.06);">
+            <img src="assets/images/hero-side.webp" alt="カード画像をドロップ" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;">
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- About -->
+  <section style="padding:112px clamp(32px,8vw,120px); background:#FFFFFF;">
+    <div style="max-width:1120px; margin:0 auto; display:grid; grid-template-columns:minmax(240px,0.85fr) minmax(0,1.6fr); align-items:center; gap:clamp(24px,4vw,64px);">
+      <div style="text-align:left;">
+        <div class="cardhub-reveal" style="font-size:12px; font-weight:600; letter-spacing:0.28em; text-transform:uppercase; color:#14A85A; margin-bottom:16px;">About</div>
+        <h2 style="font-size:clamp(28px,4.2vw,40px); font-weight:900; margin:0 0 16px; letter-spacing:-0.015em; line-height:1.35; color:#101810;"><span style="letter-spacing:-0.03em;">CardHub</span>って？</h2>
+        <p style="font-size: 17px; line-height: 2.1; margin: 0; color: #3A4237; text-wrap: pretty; width: 381px; height: 176px">トレカ抽選管理アプリ<span style="font-weight:600;">CardHub</span>は、開発者自身がトレカ抽選への応募に悩んだ経験から、「今どこに応募していて、いつ結果が出るのか？」をもっと簡単に、すぐ見れるようにしたい！という想いから作られたアプリです。</p>
+      </div>
+      <div style="display:flex; justify-content:flex-end; align-items:center; position:relative; min-width:0;">
+        <div style="position:relative; width:100%; max-width:900px; aspect-ratio:4/3;">
+          <img src="assets/images/about-mock.webp" alt="斜めに寝かせたiPhoneモック画像（透過PNG推奨）をドロップ" loading="lazy" style="width:100%;height:100%;object-fit:contain;display:block;">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section style="padding:112px clamp(32px,8vw,120px);">
+    <div style="max-width:1120px; margin:0 auto;">
+    <div class="cardhub-reveal" style="text-align:center; margin-bottom:96px;">
+      <div style="font-size:12px; font-weight:600; letter-spacing:0.28em; text-transform:uppercase; color:#14A85A; margin-bottom:16px;">Features</div>
+      <h2 style="font-size:clamp(28px,4.2vw,40px); font-weight:900; margin:0 0 16px; letter-spacing:-0.015em; line-height:1.35; color:#101810; margin-bottom:0;"><span style="letter-spacing:-0.03em;">CardHub</span>の特徴</h2>
+    </div>
+
+    <div class="cardhub-reveal" style="display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:clamp(40px,6vw,96px); margin-bottom:120px;">
+      <div style="position:relative; display:flex; justify-content:center; order:1; width:280px; flex:none;">
+        <div style="position:absolute; inset:8% 12%; background:radial-gradient(circle,rgba(20,168,90,0.12),transparent 70%); filter:blur(28px);"></div>
+        <div style="position:relative; width:100%; max-width:280px; aspect-ratio:1284/2778; border-radius:28px; overflow:hidden; box-shadow:0 32px 64px -24px rgba(18,23,15,0.32), 0 0 0 1px rgba(18,23,15,0.06); background:#fff;">
+          <img src="assets/images/feature-1.webp" alt="応募状況の画面をドロップ" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:28px;">
+        </div>
+      </div>
+      <div style="order:2; text-align:left; width:min(100%,380px); flex:none;">
+        <div style="font-size:64px; font-weight:800; line-height:1; color:rgba(20,168,90,0.18); letter-spacing:-0.04em; margin-bottom:12px;">01</div>
+        <h3 style="font-size:clamp(22px,2.4vw,28px); font-weight:900; margin:0 0 20px; line-height:1.5; letter-spacing:-0.01em; color:#101810;">気になる抽選を<br>簡単に検索・登録可能！</h3>
+        <p style="color:#4A5245; font-size:16px; line-height:2; margin:0; text-align:justify; text-wrap:pretty;">全国のトレカ抽選をカード名や店舗から検索して登録可能。応募済み・気になる、のステータスも簡単に切り替えられます。</p>
+      </div>
+    </div>
+
+    <div class="cardhub-reveal" style="display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:clamp(40px,6vw,96px); margin-bottom:120px;">
+      <div style="position:relative; display:flex; justify-content:center; order:2; width:280px; flex:none;">
+        <div style="position:absolute; inset:8% 12%; background:radial-gradient(circle,rgba(20,168,90,0.12),transparent 70%); filter:blur(28px);"></div>
+        <div style="position:relative; width:100%; max-width:280px; aspect-ratio:1284/2778; border-radius:28px; overflow:hidden; box-shadow:0 32px 64px -24px rgba(18,23,15,0.32), 0 0 0 1px rgba(18,23,15,0.06); background:#fff;">
+          <img src="assets/images/feature-2.webp" alt="抽選比較の画面をドロップ" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:28px;">
+        </div>
+      </div>
+      <div style="order:1; text-align:left; width:min(100%,380px); flex:none;">
+        <div style="font-size:64px; font-weight:800; line-height:1; color:rgba(20,168,90,0.18); letter-spacing:-0.04em; margin-bottom:12px;">02</div>
+        <h3 style="font-size:clamp(22px,2.4vw,28px); font-weight:900; margin:0 0 20px; line-height:1.5; letter-spacing:-0.01em; color:#101810;">応募状況の一覧と<br>結果を一目で確認！</h3>
+        <p style="color:#4A5245; font-size:16px; line-height:2; margin:0; text-align:justify; text-wrap:pretty;">マイ抽選一覧で応募中・当選・落選をまとめて確認。締切前の通知でチャンスを見逃しません。</p>
+      </div>
+    </div><div class="cardhub-reveal" style="display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:clamp(40px,6vw,96px);">
+      <div style="position:relative; display:flex; justify-content:center; order:1; width:280px; flex:none;">
+        <div style="position:absolute; inset:8% 12%; background:radial-gradient(circle,rgba(20,168,90,0.12),transparent 70%); filter:blur(28px);"></div>
+        <div style="position:relative; width:100%; max-width:280px; aspect-ratio:1284/2778; border-radius:28px; overflow:hidden; box-shadow:0 32px 64px -24px rgba(18,23,15,0.32), 0 0 0 1px rgba(18,23,15,0.06); background:#fff;">
+          <img src="assets/images/feature-3.webp" alt="統計分析の画面をドロップ" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:28px;">
+        </div>
+      </div>
+      <div style="order:2; text-align:left; width:min(100%,380px); flex:none;">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+          <div style="font-size:64px; font-weight:800; line-height:1; color:rgba(20,168,90,0.18); letter-spacing:-0.04em;">03</div><span style="display:inline-flex; align-items:center; background:#F2FBF5; border:1px solid rgba(14,122,68,0.25); color:#0E7A44; font-size:12px; font-weight:700; padding:5px 12px; border-radius:100px; letter-spacing:0.02em;">サブスク・買い切り限定</span>
+          
+        </div>
+        <h3 style="font-size:clamp(22px,2.4vw,28px); font-weight:900; margin:0 0 20px; line-height:1.5; letter-spacing:-0.01em; color:#101810;">当選率と連動し<br>データが日々更新！</h3>
+        <p style="color:#4A5245; font-size:16px; line-height:2; margin:0; text-align:justify; text-wrap:pretty;">応募・当選・落選の記録が自動でグラフ化。店舗別の当選率もいつでも振り返ることができます。</p>
+      </div>
+    </div>
+
+    
+    </div>
+  </section>
+
+  <!-- Steps -->
+  <section id="steps" style="padding:112px clamp(32px,8vw,120px); background:#F3FBF6; position:relative; overflow:hidden;">
+    <div style="position:absolute; top:-160px; left:-100px; width:480px; height:480px; border-radius:50%; background:radial-gradient(circle,rgba(20,168,90,0.14),transparent 70%); animation:cardhub-blob 9s ease-in-out infinite;"></div>
+    <div style="position:relative; max-width:1120px; margin:0 auto;">
+      <div class="cardhub-reveal" style="text-align:center; margin-bottom:64px;">
+        <div style="font-size:12px; font-weight:600; letter-spacing:0.28em; text-transform:uppercase; color:#14A85A; margin-bottom:16px;">How to use</div>
+        <h2 style="font-size:clamp(28px,4.2vw,40px); font-weight:900; margin:0 0 16px; letter-spacing:-0.015em; line-height:1.35; color:#101810;">使い方は3ステップ</h2>
+        <p style="color:#6B7264; font-size:16px; line-height:1.8; margin:0;">むずかしい設定は一切なし。すぐに使い始められます。</p>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:24px;">
+        <div class="cardhub-reveal" style="background:#fff; border:1px solid rgba(18,23,15,0.08); border-radius:24px; padding:36px 32px; box-shadow:0 18px 40px -26px rgba(18,23,15,0.2);">
+          <div style="font-size:13px; font-weight:600; letter-spacing:0.2em; color:#14A85A; margin-bottom:20px;">STEP 01</div>
+          <div style="font-weight:900; font-size:19px; margin-bottom:12px; letter-spacing:-0.01em; color:#101810;">気になる抽選を登録</div>
+          <div style="color:#4A5245; font-size:15px; line-height:1.9; text-wrap:pretty;">全国の抽選一覧から、応募したいものをチェックリストに追加。抽選の結果に応じてステータスを更新。</div>
+        </div>
+        <div class="cardhub-reveal" style="background:#fff; border:1px solid rgba(18,23,15,0.08); border-radius:24px; padding:36px 32px; box-shadow:0 18px 40px -26px rgba(18,23,15,0.2);">
+          <div style="font-size:13px; font-weight:600; letter-spacing:0.2em; color:#14A85A; margin-bottom:20px;">STEP 02</div>
+          <div style="font-weight:900; font-size:19px; margin-bottom:12px; letter-spacing:-0.01em; color:#101810;">締切をカレンダーで確認</div>
+          <div style="color:#4A5245; font-size:15px; line-height:1.9; text-wrap:pretty;">応募締切・結果発表の日程を自動でカレンダーに反映。</div>
+        </div>
+        <div class="cardhub-reveal" style="background:#fff; border:1px solid rgba(18,23,15,0.08); border-radius:24px; padding:36px 32px; box-shadow:0 18px 40px -26px rgba(18,23,15,0.2);">
+          <div style="font-size:13px; font-weight:600; letter-spacing:0.2em; color:#14A85A; margin-bottom:20px;">STEP 03</div>
+          <div style="font-weight:900; font-size:19px; margin-bottom:12px; letter-spacing:-0.01em; color:#101810;">結果を記録して分析</div>
+          <div style="color:#4A5245; font-size:15px; line-height:1.9; text-wrap:pretty;">当選・落選を記録するだけで、当選率が自動でグラフ化されます。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section style="padding:112px clamp(32px,8vw,120px); background:#FFFFFF;">
+    <div style="max-width:1120px; margin:0 auto;">
+      <div class="cardhub-reveal" style="text-align:center; margin-bottom:64px;">
+        <div style="font-size:12px; font-weight:600; letter-spacing:0.28em; text-transform:uppercase; color:#14A85A; margin-bottom:16px;">Pricing</div>
+        <h2 style="font-size:clamp(28px,4.2vw,40px); font-weight:900; margin:0 0 16px; letter-spacing:-0.015em; line-height:1.35; color:#101810;">料金プラン</h2>
+        <p style="color:#6B7264; font-size:16px; line-height:1.8; margin:0;">まずは無料で。買い切りでもサブスクでも、あなたに合う形で。</p>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:24px; align-items:stretch;">
+        <div class="cardhub-reveal hv-3" style="border:1px solid rgba(18,23,15,0.1); border-radius:24px; padding:40px 32px; background:#FBFAF7; display:flex; flex-direction:column; transition:transform .25s ease, box-shadow .25s ease;">
+          <div style="font-size:12px; font-weight:600; letter-spacing:0.2em; text-transform:uppercase; color:#6B7264; margin-bottom:12px;">無料</div>
+          <div style="font-weight:800; font-size:40px; letter-spacing:-0.03em; margin-bottom:28px; color:#101810;">¥0</div>
+          <ul style="list-style:none; padding:0; margin:0 0 32px; display:flex; flex-direction:column; gap:14px; font-size:15px; color:#3A4237; flex:1;">
+            <li style="display:flex; gap:10px; align-items:flex-start;"><span style="color:#14A85A; font-weight:700;">—</span>抽選の登録・管理</li>
+            <li style="display:flex; gap:10px; align-items:flex-start;"><span style="color:#14A85A; font-weight:700;">—</span>カレンダー連携</li>
+          </ul>
+          <a class="hv-4" href="https://apps.apple.com/jp/app/id6797062944" style="display:block; text-align:center; background:#fff; border:1px solid rgba(18,23,15,0.14); color:#101810; font-weight:600; font-size:15px; padding:14px; border-radius:100px; transition:background .2s ease;">無料で始める</a>
+        </div>
+        <div class="cardhub-reveal hv-5" style="border:1px solid rgba(18,23,15,0.1); border-radius:24px; padding:40px 32px; background:#FBFAF7; display:flex; flex-direction:column; transition:transform .25s ease, box-shadow .25s ease;">
+          <div style="font-size:12px; font-weight:600; letter-spacing:0.2em; text-transform:uppercase; color:#6B7264; margin-bottom:12px;">買い切り</div>
+          <div style="font-weight:800; font-size:40px; letter-spacing:-0.03em; margin-bottom:28px; color:#101810;">¥2,000<span style="font-size:14px; font-weight:400; color:#6B7264; letter-spacing:0;"> 一回のみ</span></div>
+          <ul style="list-style:none; padding:0; margin:0 0 32px; display:flex; flex-direction:column; gap:14px; font-size:15px; color:#3A4237; flex:1;">
+            <li style="display:flex; gap:10px; align-items:flex-start;"><span style="color:#14A85A; font-weight:700;">—</span>抽選の登録・管理</li>
+            <li style="display:flex; gap:10px; align-items:flex-start;"><span style="color:#14A85A; font-weight:700;">—</span>カレンダー連携</li>
+            <li style="display:flex; gap:10px; align-items:flex-start;"><span style="color:#14A85A; font-weight:700;">—</span>詳細な統計・推移グラフ</li>
+          </ul>
+          <div style="font-size:13px; color:#6B7264; margin-bottom:14px;">ずっと使える</div>
+          <a class="hv-6" href="https://apps.apple.com/jp/app/id6797062944" style="display:block; text-align:center; background:#fff; border:1px solid rgba(18,23,15,0.14); color:#101810; font-weight:600; font-size:15px; padding:14px; border-radius:100px; transition:background .2s ease;">買い切りで購入</a>
+        </div>
+        <div class="cardhub-reveal hv-7" style="border:1px solid rgba(14,122,68,0.28); border-radius:24px; padding:40px 32px; background:linear-gradient(165deg,#F2FBF5,#FFFFFF 70%); position:relative; box-shadow:0 24px 56px -28px rgba(14,122,68,0.4); display:flex; flex-direction:column; transition:transform .25s ease, box-shadow .25s ease;">
+          <div style="position:absolute; top:-13px; right:28px; background:#14A85A; color:#fff; font-size:11px; font-weight:600; letter-spacing:0.16em; text-transform:uppercase; padding:6px 14px; border-radius:100px;">オススメ！</div>
+          <div style="font-size:12px; font-weight:600; letter-spacing:0.2em; text-transform:uppercase; color:#14A85A; margin-bottom:12px;">サブスク</div>
+          <div style="font-weight:800; font-size:40px; letter-spacing:-0.03em; margin-bottom:28px; color:#101810;">¥400<span style="font-size:14px; font-weight:400; color:#6B7264; letter-spacing:0;"> / 月</span></div>
+          <ul style="list-style:none; padding:0; margin:0 0 32px; display:flex; flex-direction:column; gap:14px; font-size:15px; color:#3A4237; flex:1;">
+            <li style="display:flex; gap:10px; align-items:flex-start;"><span style="color:#14A85A; font-weight:700;">—</span>抽選の登録・管理</li>
+            <li style="display:flex; gap:10px; align-items:flex-start;"><span style="color:#14A85A; font-weight:700;">—</span>カレンダー連携</li>
+            <li style="display:flex; gap:10px; align-items:flex-start;"><span style="color:#14A85A; font-weight:700;">—</span>詳細な統計・推移グラフ</li>
+          </ul>
+          <div style="font-size:13px; color:#6B7264; margin-bottom:14px;">いつでも解約可能</div>
+          <a class="hv-8" href="https://apps.apple.com/jp/app/id6797062944" style="display:inline-flex; align-items:center; justify-content:center; gap:10px; background:linear-gradient(145deg,#14A85A,#0A5E34); color:#fff; font-weight:600; font-size:16px; padding:16px 36px; border-radius:100px; box-shadow:0 18px 40px -14px rgba(14,122,68,0.5); transition:transform .22s ease; width:100%; box-sizing:border-box; padding:14px;">サブスクで購入</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Testimonials -->
+  <section style="padding:112px clamp(32px,8vw,120px); background:#FBFAF7; border-top:1px solid rgba(18,23,15,0.06);">
+    <div style="max-width:1120px; margin:0 auto;">
+      <div class="cardhub-reveal" style="text-align:center; margin-bottom:64px;">
+        <div style="font-size:12px; font-weight:600; letter-spacing:0.28em; text-transform:uppercase; color:#14A85A; margin-bottom:16px;">Voices</div>
+        <h2 style="font-size:clamp(28px,4.2vw,40px); font-weight:900; margin:0 0 16px; letter-spacing:-0.015em; line-height:1.35; color:#101810;">利用者の声</h2>
+        <p style="color:#6B7264; font-size:16px; line-height:1.8; margin:0;"><span style="font-weight:600;">CardHub</span>を使っているみなさんから。</p>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:24px;">
+        <div class="cardhub-reveal" style="background:#fff; border:1px solid rgba(18,23,15,0.08); border-radius:24px; padding:36px 32px; box-shadow:0 18px 40px -26px rgba(18,23,15,0.2);">
+          <div style="color:#14A85A; font-size:14px; margin-bottom:18px; letter-spacing:3px;">★★★★★</div>
+          <p style="font-size:15.5px; line-height:1.95; color:#3A4237; margin:0 0 24px; text-wrap:pretty;">応募した抽選がバラバラに管理できず困っていましたが、これ1つで完結。締切を見逃さなくなりました。</p>
+          <div style="display:flex; align-items:center; gap:11px; padding-top:18px; border-top:1px solid rgba(18,23,15,0.07);">
+            <div style="width:34px; height:34px; border-radius:100px; background:#E6F6EC; color:#0A5E34; font-weight:600; font-size:14px; display:flex; align-items:center; justify-content:center;">M</div>
+            <div style="font-size:13.5px; color:#6B7264;">Mさん・カード収集歴3年</div>
+          </div>
+        </div>
+        <div class="cardhub-reveal" style="background:#fff; border:1px solid rgba(18,23,15,0.08); border-radius:24px; padding:36px 32px; box-shadow:0 18px 40px -26px rgba(18,23,15,0.2);">
+          <div style="color:#14A85A; font-size:14px; margin-bottom:18px; letter-spacing:3px;">★★★★★</div>
+          <p style="font-size:15.5px; line-height:1.95; color:#3A4237; margin:0 0 24px; text-wrap:pretty;">当選率が可視化されて、どの店舗に力を入れるべきかが分かるように。応募の質が上がった気がします。</p>
+          <div style="display:flex; align-items:center; gap:11px; padding-top:18px; border-top:1px solid rgba(18,23,15,0.07);">
+            <div style="width:34px; height:34px; border-radius:100px; background:#E6F6EC; color:#0A5E34; font-weight:600; font-size:14px; display:flex; align-items:center; justify-content:center;">Y</div>
+            <div style="font-size:13.5px; color:#6B7264;">Yさん・学生</div>
+          </div>
+        </div>
+        <div class="cardhub-reveal" style="background:#fff; border:1px solid rgba(18,23,15,0.08); border-radius:24px; padding:36px 32px; box-shadow:0 18px 40px -26px rgba(18,23,15,0.2);">
+          <div style="color:#14A85A; font-size:14px; margin-bottom:18px; letter-spacing:3px;">★★★★☆</div>
+          <p style="font-size:15.5px; line-height:1.95; color:#3A4237; margin:0 0 24px; text-wrap:pretty;">カレンダーに自動反映されるのが地味に助かります。通知を見て応募し忘れがなくなりました。</p>
+          <div style="display:flex; align-items:center; gap:11px; padding-top:18px; border-top:1px solid rgba(18,23,15,0.07);">
+            <div style="width:34px; height:34px; border-radius:100px; background:#E6F6EC; color:#0A5E34; font-weight:600; font-size:14px; display:flex; align-items:center; justify-content:center;">K</div>
+            <div style="font-size:13.5px; color:#6B7264;">Kさん・会社員</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section style="padding:112px clamp(32px,8vw,120px); background:#FFFFFF;">
+    <div style="max-width:800px; margin:0 auto;">
+      <div class="cardhub-reveal" style="text-align:center; margin-bottom:56px;">
+        <div style="font-size:12px; font-weight:600; letter-spacing:0.28em; text-transform:uppercase; color:#14A85A; margin-bottom:16px;">FAQ</div>
+        <h2 style="font-size:clamp(28px,4.2vw,40px); font-weight:900; margin:0 0 16px; letter-spacing:-0.015em; line-height:1.35; color:#101810;">よくある質問</h2>
+        <p style="color:#6B7264; font-size:16px; line-height:1.8; margin:0;">気になることがあれば、まずはこちらをチェック。</p>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <details class="cardhub-reveal" style="border:1px solid rgba(18,23,15,0.09); border-radius:18px; padding:24px 28px; background:#FBFAF7;">
+          <summary style="font-weight:700; font-size:16px; list-style:none; display:flex; align-items:center; justify-content:space-between; gap:16px; color:#101810;"><span>利用料金はかかりますか？</span><span style="color:#14A85A; font-size:18px; flex:none; transition:transform .25s ease;">＋</span></summary>
+          <p style="color:#4A5245; font-size:15px; line-height:1.95; margin:14px 0 0; text-wrap:pretty;">基本機能は無料でお使いいただけます。より詳しい統計分析が必要な場合は、買い切りプランまたは月額480円のプレミアムプランをご用意しています。</p>
+        </details>
+        <details class="cardhub-reveal" style="border:1px solid rgba(18,23,15,0.09); border-radius:18px; padding:24px 28px; background:#FBFAF7;">
+          <summary style="font-weight:700; font-size:16px; list-style:none; display:flex; align-items:center; justify-content:space-between; gap:16px; color:#101810;"><span>対応している店舗・サイトは何ですか？</span><span style="color:#14A85A; font-size:18px; flex:none; transition:transform .25s ease;">＋</span></summary>
+          <p style="color:#4A5245; font-size:15px; line-height:1.95; margin:14px 0 0; text-wrap:pretty;">全国の主要なトレカ抽選サイトに対応しています。対応店舗は毎月増えています。</p>
+        </details>
+        <details class="cardhub-reveal" style="border:1px solid rgba(18,23,15,0.09); border-radius:18px; padding:24px 28px; background:#FBFAF7;">
+          <summary style="font-weight:700; font-size:16px; list-style:none; display:flex; align-items:center; justify-content:space-between; gap:16px; color:#101810;"><span>Androidでも使えますか？</span><span style="color:#14A85A; font-size:18px; flex:none; transition:transform .25s ease;">＋</span></summary>
+          <p style="color:#4A5245; font-size:15px; line-height:1.95; margin:14px 0 0; text-wrap:pretty;">現在はiOS版のみ提供中です。Android版は今後の対応を検討しています。</p>
+        </details>
+        <details class="cardhub-reveal" style="border:1px solid rgba(18,23,15,0.09); border-radius:18px; padding:24px 28px; background:#FBFAF7;">
+          <summary style="font-weight:700; font-size:16px; list-style:none; display:flex; align-items:center; justify-content:space-between; gap:16px; color:#101810;"><span>登録している抽選情報は自動で消えますか？</span><span style="color:#14A85A; font-size:18px; flex:none; transition:transform .25s ease;">＋</span></summary>
+          <p style="color:#4A5245; font-size:15px; line-height:1.95; margin:14px 0 0; text-wrap:pretty;">結果発表後もデータは保存され、統計・分析画面から過去の履歴をいつでも振り返ることができます。</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <section id="download" style="padding:128px clamp(32px,8vw,120px); background:linear-gradient(165deg,#F2FBF5,#FFFFFF 65%); text-align:center; position:relative; overflow:hidden; border-top:1px solid rgba(18,23,15,0.06);">
+    <div style="position:absolute; bottom:-200px; left:50%; transform:translateX(-50%); width:720px; height:420px; background:radial-gradient(ellipse at center,rgba(20,168,90,0.16),transparent 70%);"></div>
+    <div style="position:relative; max-width:1120px; margin:0 auto;">
+      <h2 style="font-size:clamp(28px,4.2vw,40px); font-weight:900; margin:0 0 16px; letter-spacing:-0.015em; line-height:1.35; color:#101810; font-size:clamp(28px,4.4vw,44px); margin-bottom:20px;">今日から抽選管理を、<br>もっとかんたんに。</h2>
+      <p style="color:#6B7264; font-size:16px; line-height:1.8; margin:0; margin-bottom:40px;"><span style="font-weight: 600; color: rgb(20, 168, 90);">CardHub</span>をダウンロードして、抽選応募・管理をスマートに始めましょう。</p>
+      <a class="hv-9" href="https://apps.apple.com/jp/app/id6797062944" style="display:inline-flex; align-items:center; justify-content:center; gap:10px; background:linear-gradient(145deg,#14A85A,#0A5E34); color:#fff; font-weight:600; font-size:16px; padding:16px 36px; border-radius:100px; box-shadow:0 18px 40px -14px rgba(14,122,68,0.5); transition:transform .22s ease;"><svg width="17" height="17" viewBox="0 0 384 512" fill="currentColor"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.2-52.3.8-108.1 41.7-108.1 124.9 0 24.6 4.5 50 13.5 76.2 12 34 55.1 117.3 100 115.9 23.5-.6 40.1-16.8 70.7-16.8 29.7 0 45.1 16.8 71.3 16.8 45.4-.7 84.4-76.4 95.8-110.5-60.9-28.7-53.1-84.1-53.6-78.6zM255.7 89.5c22.6-26.9 20.5-51.4 19.8-60.5-19.3 1.1-41.7 13.4-54.4 28.5-13.9 15.7-22.1 35.2-20.3 59.2 21.5 1.7 41.3-9.4 54.9-27.2z"></path></svg>App Storeでダウンロード</a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer style="padding:40px clamp(32px,8vw,120px); background:#FBFAF7; border-top:1px solid rgba(18,23,15,0.06);">
+    <div style="max-width:1120px; margin:0 auto; display:flex; flex-wrap:wrap; gap:20px; align-items:center; justify-content:space-between;">
+      <div style="display:flex; align-items:center; gap:9px; color:#3A4237; font-size:14px;">
+        <img src="assets/images/icon.png" alt="CardHub" width="22" height="22" style="width:22px; height:22px; border-radius:7px; display:block;">
+        <span style="font-weight:600; letter-spacing:-0.02em;">CardHub</span>
+      </div>
+      <div style="display:flex; gap:24px; font-size:13.5px;">
+        <a href="https://cardhub-legal.pages.dev/terms/" style="color:#6B7264;">利用規約</a>
+        <a href="https://cardhub-legal.pages.dev/privacy/" style="color:#6B7264;">プライバシーポリシー</a>
+        <a href="https://cardhub-legal.pages.dev/support/" style="color:#6B7264;">サポート</a>
+      </div>
+      <div style="font-size:12.5px; color:#9AA394; letter-spacing:0.02em;">© 2026 CardHub</div>
+    </div>
+  </footer>
+
+  <a id="back-to-top" class="hv-10" href="#" style="position:fixed; right:28px; bottom:28px; width:64px; height:64px; border-radius:100px; background:#101810; color:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 12px 28px -10px rgba(18,23,15,0.5); z-index:60; transition:transform .2s ease, box-shadow .2s ease;" aria-label="トップへ戻る">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>
+  </a>
+
+</div>
+
+
+
+<script src="assets/js/script.js"></script>
+</body>
+</html>
