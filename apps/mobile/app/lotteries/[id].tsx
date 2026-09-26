@@ -535,7 +535,7 @@ const styles = StyleSheet.create({
   infoValue: {
     flex: 1,
     flexShrink: 1,
-    marginLeft: 32,
+    marginLeft: 52,
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'right',
