@@ -15,7 +15,7 @@ import { lotteries } from '@/data/mockData';
 import { useApiRequest } from '@/hooks/useApiRequest';
 import { useNowIso } from '@/hooks/useNowIso';
 import { fetchLotteryById, getApiErrorCopy } from '@/lib/apiClient';
-import { addEventsToCalendar, ensureCalendarPermission, type CalendarEventInput } from '@/lib/calendar';
+import { addEventsToCalendar, ensureCalendarPermission, removeEventsFromCalendar, type CalendarEventInput } from '@/lib/calendar';
 import { cancelLotteryReminders, ensureNotificationPermission, scheduleApiLotteryReminders } from '@/lib/notifications';
 import { openExternalUrl } from '@/lib/url';
 import type { LotteryRecord } from '@/schemas/lotteryApi';
@@ -154,6 +154,7 @@ function ApiLotteryDetailBody({
     if (saved) {
       removeLottery(record.id);
       await cancelLotteryReminders(String(record.id));
+      await removeEventsFromCalendar(`api-${record.id}`);
       return;
     }
     await saveAndScheduleReminders();
@@ -521,6 +522,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexShrink: 0,
   },
   infoDot: {
     width: 7,
@@ -531,8 +533,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   infoValue: {
+    flex: 1,
+    flexShrink: 1,
+    marginLeft: 12,
     fontSize: 13,
     fontWeight: '700',
+    textAlign: 'right',
   },
   conditionsSection: {
     gap: 8,
