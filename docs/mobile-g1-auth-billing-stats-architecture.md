@@ -721,7 +721,7 @@ premium未加入時は`403 { error: { code: "PREMIUM_REQUIRED" } }`（一覧の�
 ```
 unknown ──┬─→ planned ──┬─→ applied ──┬─→ won ──┬─→ purchased
           │             │             │         └─→ skipped
-          │             └─→ skipped   └─→ lost
+          │             └─→ skipped   └─→ lost ─→ applied（訂正）
           ├─→ applied
           ├─→ won
           └─→ lost
@@ -729,7 +729,7 @@ unknown ──┬─→ planned ──┬─→ applied ──┬─→ won ─�
 
 - `unknown`からは任意の状態へ直接遷移可（過去分をまとめて記録するケースを許容）
 - `won → purchased` / `won → skipped`のみ許可（`won`から`lost`への遷移は不正——「取り消し」は`元に戻せるか`の節で扱う）
-- **元に戻せるか**: 直前の状態へは戻せる（`user_lottery_status_history`から1つ前の`toStatus`を復元するUIをNice to haveとして提案）。ただし`purchased → won`のような「購入したことにした後に取り消す」操作は誤操作対策のため確認ダイアログを必須にする
+- **元に戻せるか**: `lost → applied`（落選の誤記録を訂正し応募済みへ戻す）・`purchased → won`（購入したことにした後に取り消す）を訂正操作として許可する。いずれも誤操作対策のため確認ダイアログを必須にする（`isCorrectionTransition`）。それ以外の「直前の状態へ戻す」汎用的な取り消しUI（`user_lottery_status_history`から1つ前の`toStatus`を復元する）は、現時点ではNice to haveのまま未実装
 - **不正な状態遷移の扱い**: サーバー側APIでホワイトリスト方式の遷移テーブルを持ち、許可されない遷移は`400 VALIDATION_ERROR`で拒否。UIレベルでも選択肢自体を許可された遷移のみに絞り、ユーザーが不正操作を試みる余地自体を減らす
 - **締切前後・当選発表前後の扱い**: 締切通過後も`planned`のまま放置されている場合、`system_auto_expire`として`lost`または`unknown`のままにするかは要判断（統計の「応募忘れ件数」を出すには「締切通過時に`planned`のままだったもの」を検出する必要があり、自動遷移させると本来の応募有無が分からなくなる。**自動では状態を書き換えず、締切通過×`planned`のまま、を「応募忘れ」として別途カウントする**方針を推奨）
 

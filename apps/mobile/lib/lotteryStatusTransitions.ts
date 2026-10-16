@@ -11,7 +11,7 @@ const TRANSITIONS: Record<LotteryStatusApi, readonly LotteryStatusApi[]> = {
   planned: ['applied', 'skipped'],
   applied: ['won', 'lost'],
   won: ['purchased', 'skipped'],
-  lost: [],
+  lost: ['applied'],
   purchased: ['won'],
   skipped: ['planned'],
 };
@@ -29,5 +29,5 @@ export function nextLotteryStatusOptions(from: LotteryStatusApi): readonly Lotte
 
 /** 訂正操作として扱い、追加の確認ダイアログを必須にする遷移（10.2節）。 */
 export function isCorrectionTransition(from: LotteryStatusApi, to: LotteryStatusApi): boolean {
-  return from === 'purchased' && to === 'won';
+  return (from === 'purchased' && to === 'won') || (from === 'lost' && to === 'applied');
 }

@@ -14,9 +14,10 @@ describe('lotteryStatusTransitions', () => {
     expect(isValidLotteryStatusTransition('lost', 'lost')).toBe(true);
   });
 
-  it('lostからは一切遷移できない', () => {
-    expect(nextLotteryStatusOptions('lost')).toEqual([]);
-    expect(isValidLotteryStatusTransition('lost', 'applied')).toBe(false);
+  it('lostからappliedへの訂正遷移のみ許可される', () => {
+    expect(nextLotteryStatusOptions('lost')).toEqual(['applied']);
+    expect(isValidLotteryStatusTransition('lost', 'applied')).toBe(true);
+    expect(isCorrectionTransition('lost', 'applied')).toBe(true);
   });
 
   it('wonからはpurchased/skippedのみ許可される', () => {
@@ -34,7 +35,7 @@ describe('lotteryStatusTransitions', () => {
     expect(nextLotteryStatusOptions('skipped')).toEqual(['planned']);
   });
 
-  it('isCorrectionTransitionはpurchased→won以外はfalse', () => {
+  it('isCorrectionTransitionはpurchased→won・lost→applied以外はfalse', () => {
     expect(isCorrectionTransition('unknown', 'planned')).toBe(false);
     expect(isCorrectionTransition('won', 'purchased')).toBe(false);
   });
