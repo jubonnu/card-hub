@@ -3,19 +3,22 @@
     "name": "CardHub",
     "slug": "cardhub-mobile",
     "scheme": "cardhub",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.cardhub.mobile",
-      "buildNumber": "6",
+      "buildNumber": "8",
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleDevelopmentRegion": "ja",
-        "CFBundleLocalizations": ["ja"]
+        "CFBundleLocalizations": [
+          "ja"
+        ],
+        "NSUserTrackingUsageDescription": "ユーザーに適した広告を表示するために使用します"
       }
     },
     "android": {
@@ -69,7 +72,16 @@
           "organization": "jun-apps",
           "project": "react-native"
         }
-      ]
+      ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          "iosAppId": "ca-app-pub-7506867334826187~9895706237",
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "delayAppMeasurementInit": true
+        }
+      ],
+      "expo-tracking-transparency"
     ],
     "experiments": {
       "typedRoutes": true

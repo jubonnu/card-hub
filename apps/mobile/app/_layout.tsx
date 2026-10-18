@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { AppState, Platform } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { AppState, Platform, View } from 'react-native';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { GlobalNativeAd } from '@/components/ads/GlobalNativeAd';
+import { initAds } from '@/lib/ads';
 import { initPostHog } from '@/lib/analytics';
 import { restoreSession } from '@/lib/authActions';
 import { registerCustomerInfoListener } from '@/lib/billingLifecycle';
@@ -47,6 +49,11 @@ const MIN_SPLASH_VISIBLE_MS = 650;
 export default function RootLayout() {
   const theme = useTheme();
   const router = useRouter();
+  const segments = useSegments();
+  // グロナビ（BottomTabs）がある4タブ画面ではBottomTabs.tsx側がタブバーの直上に
+  // 広告を描画するため、ここでの描画と二重にならないようスキップする
+  // （グロナビの無い個別画面ではここで画面最下部に描画する）。
+  const showRootLevelAd = Platform.OS !== 'web' && segments[0] !== '(tabs)';
   const onboardingHasHydrated = useOnboardingStore((s) => s.hasHydrated);
   const onboardingCompleted = useOnboardingStore((s) => s.completed);
   const [minSplashElapsed, setMinSplashElapsed] = useState(false);
@@ -98,6 +105,11 @@ export default function RootLayout() {
     // （`lib/authActions.ts`）。それまでは匿名IDでイベントを計測する。
     initPostHog();
 
+    // AdMob SDKの初期化（広告導入）。iOSはATT許可リクエストを広告SDK初期化より先に行う
+    // （`lib/ads.ts`参照）。Web（オンボーディングスクショ撮影セッション）はネイティブ
+    // モジュールが無いためスキップする。
+    if (Platform.OS !== 'web') void initAds();
+
     // 未ログインでも抽選一覧・詳細等の公開範囲は引き続き利用できるため、
     // サインイン画面へ強制リダイレクトはしない（restoreSessionはauthStoreの状態のみ更新する）。
     // TEMP: expo-secure-storeはWeb未対応のため、オンボーディングスクショ撮影セッション
@@ -135,20 +147,26 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <StatusBar style={theme.isDark ? 'light' : 'dark'} />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: theme.colors.surface },
-        }}
-      >
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
-        <Stack.Screen name="(auth)/sign-in" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="checklist/[lotteryId]" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="notification-settings/[lotteryId]" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="day-schedule/[date]" options={{ presentation: 'modal' }} />
-      </Stack>
+      {/* ネイティブ広告（GlobalNativeAd）。グロナビの無い個別画面ではここでStackの外側・下に
+          並べることで画面最下部に表示する（4タブ画面での表示はBottomTabs.tsx側が担当、
+          広告導入・Mobile）。 */}
+      <View style={{ flex: 1 }}>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: theme.colors.surface },
+          }}
+        >
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
+          <Stack.Screen name="(auth)/sign-in" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="checklist/[lotteryId]" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="notification-settings/[lotteryId]" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="day-schedule/[date]" options={{ presentation: 'modal' }} />
+        </Stack>
+      </View>
+      {showRootLevelAd ? <GlobalNativeAd /> : null}
     </SafeAreaProvider>
   );
 }

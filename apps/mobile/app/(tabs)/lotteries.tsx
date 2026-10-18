@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
+import { NativeLotteryAd } from '@/components/ads/NativeLotteryAd';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { CheckIcon, HeartIcon, SearchIcon } from '@/components/icons';
@@ -9,6 +10,7 @@ import { PublicLotteryCard } from '@/components/PublicLotteryCard';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { SecondaryButton } from '@/components/SecondaryButton';
 import { SkeletonCard } from '@/components/SkeletonCard';
+import { useAdsEnabled } from '@/hooks/useAdsEnabled';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useLotteryStatusSheet } from '@/hooks/useLotteryStatusSheet';
 import { useNowIso } from '@/hooks/useNowIso';
@@ -20,6 +22,10 @@ import { useFilterStore, type LotteryStatusTab } from '@/stores/filterStore';
 import { useMyLotteriesStore } from '@/stores/myLotteriesStore';
 import { useTheme } from '@/theme/useTheme';
 import { compareLotteriesByTimeline, derivePublicTimelineStatus, getDisplayProductName, getDisplayShopName } from '@/utils/publicLotteryDisplay';
+import { interleaveAds } from '@/utils/interleaveAds';
+
+/** 一覧N件おきにネイティブ広告カードを1件差し込む間隔。 */
+const AD_INTERVAL = 8;
 
 const TABS: { key: LotteryStatusTab; label: string }[] = [
   { key: 'all', label: 'すべて' },
@@ -36,6 +42,7 @@ export default function LotteriesScreen() {
 
   const nowIso = useNowIso();
   const openStatusSheet = useLotteryStatusSheet();
+  const adsEnabled = useAdsEnabled();
 
   // 検索語はデバウンスしてから渡す（キー入力ごとにサーバーへ検索リクエストを飛ばさないため）。
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
@@ -89,6 +96,13 @@ export default function LotteriesScreen() {
   const hasMore = pageState.status === 'ready' && pageState.hasMore;
 
   const count = mode === 'all' ? filteredAll.length : filteredMine.length;
+
+  // 一覧へのネイティブ広告差し込み（広告導入、Mobile）。プレミアムなら広告を挟まない。
+  const mineListData = useMemo(
+    () => interleaveAds(filteredMine, adsEnabled ? AD_INTERVAL : 0),
+    [filteredMine, adsEnabled]
+  );
+  const allListData = useMemo(() => interleaveAds(filteredAll, adsEnabled ? AD_INTERVAL : 0), [filteredAll, adsEnabled]);
 
   return (
     <ScreenContainer style={{ backgroundColor: theme.colors.surface }}>
@@ -185,8 +199,8 @@ export default function LotteriesScreen() {
         />
       ) : mode === 'mine' ? (
         <FlatList
-          data={filteredMine}
-          keyExtractor={(item) => String(item.record.id)}
+          data={mineListData}
+          keyExtractor={(entry) => (entry.kind === 'ad' ? entry.key : String(entry.data.record.id))}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -197,23 +211,27 @@ export default function LotteriesScreen() {
               colors={[theme.colors.green]}
             />
           }
-          renderItem={({ item }) => (
-            <PublicLotteryCard
-              record={item.record}
-              nowIso={nowIso}
-              onPress={() => router.push(`/lotteries/${item.record.id}`)}
-              secondaryActionLabel="チェックリスト"
-              secondaryActionIcon={<CheckIcon size={13} color={theme.colors.green} />}
-              onSecondaryActionPress={() => router.push(`/checklist/${item.record.id}`)}
-              personalStatus={item.status}
-              onPersonalStatusPress={() => openStatusSheet(item)}
-            />
-          )}
+          renderItem={({ item: entry }) =>
+            entry.kind === 'ad' ? (
+              <NativeLotteryAd />
+            ) : (
+              <PublicLotteryCard
+                record={entry.data.record}
+                nowIso={nowIso}
+                onPress={() => router.push(`/lotteries/${entry.data.record.id}`)}
+                secondaryActionLabel="チェックリスト"
+                secondaryActionIcon={<CheckIcon size={13} color={theme.colors.green} />}
+                onSecondaryActionPress={() => router.push(`/checklist/${entry.data.record.id}`)}
+                personalStatus={entry.data.status}
+                onPersonalStatusPress={() => openStatusSheet(entry.data)}
+              />
+            )
+          }
         />
       ) : (
         <FlatList
-          data={filteredAll}
-          keyExtractor={(item) => String(item.id)}
+          data={allListData}
+          keyExtractor={(entry) => (entry.kind === 'ad' ? entry.key : String(entry.data.id))}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -224,9 +242,13 @@ export default function LotteriesScreen() {
               colors={[theme.colors.green]}
             />
           }
-          renderItem={({ item }) => (
-            <PublicLotteryCard record={item} nowIso={nowIso} onPress={() => router.push(`/lotteries/${item.id}`)} />
-          )}
+          renderItem={({ item: entry }) =>
+            entry.kind === 'ad' ? (
+              <NativeLotteryAd />
+            ) : (
+              <PublicLotteryCard record={entry.data} nowIso={nowIso} onPress={() => router.push(`/lotteries/${entry.data.id}`)} />
+            )
+          }
           ListFooterComponent={
             pageState.status === 'ready' ? (
               <LoadMoreFooter
