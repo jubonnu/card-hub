@@ -28,7 +28,7 @@ export function BottomTabs({ state, navigation }: BottomTabBarProps) {
 
   return (
     <Fragment>
-      <GlobalNativeAd withBottomInset={false} />
+      <GlobalNativeAd />
       <View
         style={[
           styles.container,

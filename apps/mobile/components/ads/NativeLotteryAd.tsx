@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { NativeAd, NativeAdView, NativeAsset, NativeAssetType } from 'react-native-google-mobile-ads';
 
-import { getAdRequestOptions } from '@/lib/ads';
+import { getAdRequestOptions, waitForAdsReady } from '@/lib/ads';
 import { getNativeAdUnitId } from '@/lib/adUnitIds';
 import { useTheme } from '@/theme/useTheme';
 
@@ -19,8 +19,15 @@ export function NativeLotteryAd() {
     let cancelled = false;
     let loaded: NativeAd | null = null;
 
-    NativeAd.createForAdRequest(getNativeAdUnitId(), getAdRequestOptions())
+    // ATT許可リクエスト（iOS）の結果が確定するまで広告リクエストを送らない
+    // （App Review Guideline 5.1.2(i)対応。`lib/ads.ts`の`waitForAdsReady`参照）。
+    waitForAdsReady()
+      .then(() => {
+        if (cancelled) return undefined;
+        return NativeAd.createForAdRequest(getNativeAdUnitId(), getAdRequestOptions());
+      })
       .then((ad) => {
+        if (!ad) return;
         if (cancelled) {
           ad.destroy();
           return;
@@ -101,11 +108,19 @@ export function NativeLotteryAd() {
   );
 }
 
+const CARD_PADDING = 14;
+// カード（背景の四角）に対して中身全体を少し上・左にずらすため、上下・左右の
+// paddingをあえて非対称にする（`GlobalNativeAd`と同じ調整パターン）。
+const CARD_NUDGE = 5;
+
 const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
     borderRadius: 14,
-    padding: 14,
+    paddingLeft: CARD_PADDING - CARD_NUDGE,
+    paddingRight: CARD_PADDING + CARD_NUDGE,
+    paddingTop: CARD_PADDING - CARD_NUDGE,
+    paddingBottom: CARD_PADDING + CARD_NUDGE,
     gap: 11,
   },
   headerRow: {

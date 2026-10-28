@@ -1,36 +1,24 @@
 import { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeAd, NativeAdView, NativeAsset, NativeAssetType } from 'react-native-google-mobile-ads';
 
-import { getAdRequestOptions } from '@/lib/ads';
+import { getAdRequestOptions, waitForAdsReady } from '@/lib/ads';
 import { getNativeAdUnitId } from '@/lib/adUnitIds';
 import { useAdsEnabled } from '@/hooks/useAdsEnabled';
 import { useTheme } from '@/theme/useTheme';
 
-interface GlobalNativeAdProps {
-  /**
-   * ホームインジケータ分の下paddingを自前で確保するか。グロナビ（`BottomTabs`）の直上に
-   * 置く場合はタブバー自体が下paddingを持つためfalseにする。グロナビの無い画面で
-   * `app/_layout.tsx`から画面最下部に直接置く場合はtrue（デフォルト）。
-   */
-  withBottomInset?: boolean;
-}
-
 /**
- * どの画面でも常時表示するネイティブ広告（Mobile広告導入）。`GlobalBannerAd`の後継として
- * グロナビの直上・画面最下部に置く1行レイアウトの広告枠。グロナビのある4タブ画面では
- * `BottomTabs.tsx`がタブバーの直上にこのコンポーネントを描画する。グロナビの無い個別画面
- * （抽選詳細・設定・paywall等）では`app/_layout.tsx`が`<Stack>`と並列に、画面最下部に描画する。
+ * グロナビ（`BottomTabs`）のある4タブ画面でのみ、タブバーの直上に表示するネイティブ広告
+ * （Mobile広告導入）。`BottomTabs.tsx`がタブバーの直前にこのコンポーネントを描画する。
+ * グロナビの無い個別画面（抽選詳細・設定・paywall等）には表示しない。
  *
  * 広告の読み込み中・広告無効時もカードと同じ高さ（`CARD_HEIGHT`）のプレースホルダーを確保する。
- * `GlobalNativeAd`はグロナビ（`BottomTabs`）の直上に置かれるため、広告読み込み完了後に
- * 急に高さが増えるとグロナビ自体の高さが後から変わり、React Navigation側のタブバー高さ
- * 再計測タイミングのズレで画面コンテンツと重なって見える不具合があったため。
+ * `GlobalNativeAd`はグロナビの直上に置かれるため、広告読み込み完了後に急に高さが増えると
+ * グロナビ自体の高さが後から変わり、React Navigation側のタブバー高さ再計測タイミングの
+ * ズレで画面コンテンツと重なって見える不具合があったため。
  */
-export function GlobalNativeAd({ withBottomInset = true }: GlobalNativeAdProps) {
+export function GlobalNativeAd() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
   const adsEnabled = useAdsEnabled();
   const [nativeAd, setNativeAd] = useState<NativeAd | null>(null);
@@ -46,8 +34,15 @@ export function GlobalNativeAd({ withBottomInset = true }: GlobalNativeAdProps) 
     let cancelled = false;
     let loaded: NativeAd | null = null;
 
-    NativeAd.createForAdRequest(getNativeAdUnitId(), getAdRequestOptions())
+    // ATT許可リクエスト（iOS）の結果が確定するまで広告リクエストを送らない
+    // （App Review Guideline 5.1.2(i)対応。`lib/ads.ts`の`waitForAdsReady`参照）。
+    waitForAdsReady()
+      .then(() => {
+        if (cancelled) return undefined;
+        return NativeAd.createForAdRequest(getNativeAdUnitId(), getAdRequestOptions());
+      })
       .then((ad) => {
+        if (!ad) return;
         if (cancelled) {
           ad.destroy();
           return;
@@ -69,7 +64,7 @@ export function GlobalNativeAd({ withBottomInset = true }: GlobalNativeAdProps) 
   if (!adsEnabled) return null;
 
   return (
-    <View style={[styles.wrap, { paddingBottom: withBottomInset ? insets.bottom + 8 : 8 }]}>
+    <View style={styles.wrap}>
       {!nativeAd ? (
         <View style={[styles.card, { width: cardWidth }]} />
       ) : (
@@ -136,6 +131,7 @@ const styles = StyleSheet.create({
   wrap: {
     paddingHorizontal: 12,
     paddingTop: 8,
+    paddingBottom: 8,
   },
   card: {
     height: CARD_HEIGHT,

@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { AppState, Platform, View } from 'react-native';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { AppState, Platform } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { GlobalNativeAd } from '@/components/ads/GlobalNativeAd';
 import { initAds } from '@/lib/ads';
 import { initPostHog } from '@/lib/analytics';
 import { restoreSession } from '@/lib/authActions';
@@ -49,11 +48,6 @@ const MIN_SPLASH_VISIBLE_MS = 650;
 export default function RootLayout() {
   const theme = useTheme();
   const router = useRouter();
-  const segments = useSegments();
-  // グロナビ（BottomTabs）がある4タブ画面ではBottomTabs.tsx側がタブバーの直上に
-  // 広告を描画するため、ここでの描画と二重にならないようスキップする
-  // （グロナビの無い個別画面ではここで画面最下部に描画する）。
-  const showRootLevelAd = Platform.OS !== 'web' && segments[0] !== '(tabs)';
   const onboardingHasHydrated = useOnboardingStore((s) => s.hasHydrated);
   const onboardingCompleted = useOnboardingStore((s) => s.completed);
   const [minSplashElapsed, setMinSplashElapsed] = useState(false);
@@ -147,26 +141,23 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <StatusBar style={theme.isDark ? 'light' : 'dark'} />
-      {/* ネイティブ広告（GlobalNativeAd）。グロナビの無い個別画面ではここでStackの外側・下に
-          並べることで画面最下部に表示する（4タブ画面での表示はBottomTabs.tsx側が担当、
-          広告導入・Mobile）。 */}
-      <View style={{ flex: 1 }}>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: theme.colors.surface },
-          }}
-        >
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
-          <Stack.Screen name="(auth)/sign-in" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="checklist/[lotteryId]" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="notification-settings/[lotteryId]" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="day-schedule/[date]" options={{ presentation: 'modal' }} />
-        </Stack>
-      </View>
-      {showRootLevelAd ? <GlobalNativeAd /> : null}
+      {/* 広告（GlobalNativeAd）はグロナビ（BottomTabs）のある4タブ画面でのみ表示する
+          （BottomTabs.tsx側がタブバーの直上に描画する）。グロナビの無い個別画面
+          （抽選詳細・設定・paywall等）には表示しない。 */}
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: theme.colors.surface },
+        }}
+      >
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="(auth)/sign-in" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="checklist/[lotteryId]" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="notification-settings/[lotteryId]" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="day-schedule/[date]" options={{ presentation: 'modal' }} />
+      </Stack>
     </SafeAreaProvider>
   );
 }
